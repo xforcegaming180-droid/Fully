@@ -34,7 +34,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const LOW_STOCK_THRESHOLD = parseInt(process.env.LOW_STOCK_THRESHOLD) || 10;
 
 // Support both ADMIN_DISCORD_ID and ADMIN_USER_ID env var names
-const ADMIN_DISCORD_ID = ADMIN_DISCORD_ID || process.env.ADMIN_USER_ID || '';
+const ADMIN_DISCORD_ID = process.env.ADMIN_DISCORD_ID || process.env.ADMIN_USER_ID || '';
 
 // ---------- CONSTANTS ----------
 const PRODUCTS = {
