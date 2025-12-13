@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waiting for Payment - SwimHub</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .waiting-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .waiting-card {
+            background: rgba(30, 30, 30, 0.9);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 50px 40px;
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            text-align: center;
+            animation: cardFadeIn 0.6s ease-out;
+        }
+        
+        @keyframes cardFadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .waiting-icon {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            position: relative;
+        }
+        
+        .waiting-icon i {
+            font-size: 2.5rem;
+            color: white;
+        }
+        
+        .waiting-icon::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: #a855f7;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .waiting-title {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #ffffff 0%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .waiting-subtitle {
+            color: #9ca3af;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            background: rgba(124, 58, 237, 0.2);
+            border-radius: 50px;
+            color: #a78bfa;
+            font-weight: 500;
+            margin-bottom: 30px;
+        }
+        
+        .status-badge i {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .info-box p {
+            color: #93c5fd;
+            margin: 0;
+            font-size: 0.95rem;
+        }
+        
+        .info-box i {
+            color: #3b82f6;
+            margin-right: 8px;
+        }
+        
+        .product-info {
+            background: rgba(124, 58, 237, 0.1);
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .product-label {
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+        
+        .product-name {
+            color: #fff;
+            font-weight: 600;
+        }
+        
+        .cancel-link {
+            color: #6b7280;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+        }
+        
+        .cancel-link:hover {
+            color: #ef4444;
+        }
+        
+        /* Success state */
+        .waiting-card.success .waiting-icon {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        
+        .waiting-card.success .waiting-icon::after {
+            display: none;
+        }
+        
+        .waiting-card.success .status-badge {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+        }
+        
+        /* Error state */
+        .waiting-card.error .waiting-icon {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        
+        .waiting-card.error .waiting-icon::after {
+            display: none;
+        }
+        
+        .waiting-card.error .status-badge {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+        
+        .retry-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+        }
+        
+        .retry-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(124, 58, 237, 0.4);
+        }
+    </style>
+</head>
+<body class="legal-page">
+    <!-- Background Effects -->
+    <div class="gradient-orb orb-1"></div>
+    <div class="gradient-orb orb-2"></div>
+    
+    <div class="waiting-container">
+        <div class="waiting-card" id="waitingCard">
+            <div class="waiting-icon" id="waitingIcon">
+                <i class="fas fa-clock" id="statusIcon"></i>
+            </div>
+            
+            <h1 class="waiting-title" id="waitingTitle">Waiting for Payment</h1>
+            <p class="waiting-subtitle" id="waitingSubtitle">Complete your payment in the other tab</p>
+            
+            <div class="status-badge" id="statusBadge">
+                <i class="fas fa-circle"></i>
+                <span id="statusText">Checking payment status...</span>
+            </div>
+            
+            <div class="product-info" id="productInfo">
+                <span class="product-label">Product</span>
+                <span class="product-name" id="productName">Loading...</span>
+            </div>
+            
+            <div class="info-box">
+                <p><i class="fas fa-info-circle"></i> This page will automatically update when your payment is confirmed. Please don't close this tab.</p>
+            </div>
+            
+            <a href="/purchase" class="cancel-link" id="cancelLink">Cancel and go back</a>
+        </div>
+    </div>
+    
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session');
+        
+        const waitingCard = document.getElementById('waitingCard');
+        const waitingIcon = document.getElementById('waitingIcon');
+        const statusIcon = document.getElementById('statusIcon');
+        const waitingTitle = document.getElementById('waitingTitle');
+        const waitingSubtitle = document.getElementById('waitingSubtitle');
+        const statusBadge = document.getElementById('statusBadge');
+        const statusText = document.getElementById('statusText');
+        const productName = document.getElementById('productName');
+        const cancelLink = document.getElementById('cancelLink');
+        
+        let pollInterval;
+        let pollCount = 0;
+        const maxPolls = 180; // 15 minutes max (5 second intervals)
+        
+        async function checkPaymentStatus() {
+            if (!sessionId) {
+                showError('Invalid session');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/payment-status/${sessionId}`);
+                const data = await response.json();
+                
+                if (data.productName) {
+                    productName.textContent = data.productName;
+                }
+                
+                if (data.status === 'completed') {
+                    showSuccess();
+                    return;
+                }
+                
+                if (data.status === 'not_found') {
+                    pollCount++;
+                    if (pollCount > 10) {
+                        showError('Session expired. Please try again.');
+                        return;
+                    }
+                }
+                
+                // Update status text with animation
+                statusText.textContent = 'Waiting for payment confirmation...';
+                
+                pollCount++;
+                if (pollCount >= maxPolls) {
+                    showError('Payment timeout. Please contact support if you completed payment.');
+                    return;
+                }
+                
+            } catch (error) {
+                console.error('Error checking status:', error);
+                statusText.textContent = 'Checking payment status...';
+            }
+        }
+        
+        function showSuccess() {
+            clearInterval(pollInterval);
+            
+            waitingCard.classList.add('success');
+            statusIcon.className = 'fas fa-check';
+            waitingTitle.textContent = 'Payment Successful!';
+            waitingSubtitle.textContent = 'Your license key has been sent to your Discord DMs';
+            statusText.textContent = 'Payment confirmed!';
+            statusBadge.querySelector('i').className = 'fas fa-check-circle';
+            cancelLink.style.display = 'none';
+            
+            // Redirect to success page after 2 seconds
+            setTimeout(() => {
+                window.location.href = '/success';
+            }, 2000);
+        }
+        
+        function showError(message) {
+            clearInterval(pollInterval);
+            
+            waitingCard.classList.add('error');
+            statusIcon.className = 'fas fa-times';
+            waitingTitle.textContent = 'Something Went Wrong';
+            waitingSubtitle.textContent = message;
+            statusText.textContent = 'Error';
+            statusBadge.querySelector('i').className = 'fas fa-exclamation-circle';
+            
+            // Replace cancel link with retry button
+            cancelLink.outerHTML = '<a href="/purchase" class="retry-btn"><i class="fas fa-redo"></i> Try Again</a>';
+        }
+        
+        // Start polling
+        if (sessionId) {
+            checkPaymentStatus();
+            pollInterval = setInterval(checkPaymentStatus, 5000); // Check every 5 seconds
+        } else {
+            showError('No session ID provided');
+        }
+    </script>
+</body>
+</html>

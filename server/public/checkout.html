@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - SwimHub</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Polar Embed Checkout -->
+    <script src="https://cdn.jsdelivr.net/npm/@polar-sh/checkout@0.1/dist/embed.global.js" defer></script>
+    <style>
+        .checkout-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .checkout-card {
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            text-align: center;
+            animation: cardFadeIn 0.6s ease-out;
+        }
+        
+        .checkout-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #00d4ff, #3b82f6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            font-size: 2rem;
+            color: white;
+            box-shadow: 0 10px 40px rgba(0, 212, 255, 0.3);
+        }
+        
+        .checkout-title {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #ffffff 0%, #00d4ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .checkout-subtitle {
+            color: #94a3b8;
+            margin-bottom: 30px;
+        }
+        
+        .user-info {
+            background: rgba(0, 212, 255, 0.08);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(0, 212, 255, 0.15);
+        }
+        
+        .user-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .user-info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .user-info-label {
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .user-info-value {
+            color: #fff;
+            font-weight: 600;
+        }
+        
+        .discord-badge {
+            background: #5865F2;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .product-badge {
+            background: linear-gradient(135deg, #00d4ff, #3b82f6);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.95rem;
+        }
+        
+        .checkout-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            margin-bottom: 15px;
+        }
+        
+        .checkout-btn:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+        }
+        
+        .checkout-btn i {
+            font-size: 1.2rem;
+        }
+        
+        .cancel-btn {
+            display: inline-block;
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+        }
+        
+        .cancel-btn:hover {
+            color: #ef4444;
+        }
+        
+        .security-note {
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(16, 185, 129, 0.08);
+            border-radius: 12px;
+            border: 1px solid rgba(16, 185, 129, 0.15);
+        }
+        
+        .security-note p {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin: 0;
+        }
+        
+        .security-note i {
+            color: #10b981;
+            margin-right: 8px;
+        }
+        
+        .loading-spinner {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            color: #ef4444;
+            display: none;
+        }
+        
+        .success-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body class="legal-page">
+    <!-- Background Effects -->
+    <div class="gradient-orb orb-1"></div>
+    <div class="gradient-orb orb-2"></div>
+    
+    <div class="checkout-container">
+        <a href="purchase.html" class="back-btn">
+            <i class="fas fa-arrow-left"></i> Back to Pricing
+        </a>
+        
+        <div class="checkout-card" id="checkoutCard">
+            <div class="checkout-icon">
+                <i class="fab fa-discord"></i>
+            </div>
+            
+            <h1 class="checkout-title">Complete Your Purchase</h1>
+            <p class="checkout-subtitle">You're almost there! Review your order below.</p>
+            
+            <div class="loading-spinner" id="loadingSpinner"></div>
+            
+            <div class="error-message" id="errorMessage">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="errorText">An error occurred. Please try again.</span>
+            </div>
+            
+            <div class="user-info" id="userInfo" style="display: none;">
+                <div class="user-info-row">
+                    <span class="user-info-label">
+                        <i class="fab fa-discord"></i> Discord Account
+                    </span>
+                    <span class="discord-badge" id="discordUsername">
+                        <i class="fab fa-discord"></i> Loading...
+                    </span>
+                </div>
+                <div class="user-info-row">
+                    <span class="user-info-label">
+                        <i class="fas fa-box"></i> Product
+                    </span>
+                    <span class="product-badge" id="productName">Loading...</span>
+                </div>
+                <div class="user-info-row">
+                    <span class="user-info-label">
+                        <i class="fas fa-server"></i> Server Joined
+                    </span>
+                    <span class="success-badge">
+                        <i class="fas fa-check"></i> SwimHub Discord
+                    </span>
+                </div>
+            </div>
+            
+            <button class="checkout-btn" id="checkoutBtn" style="display: none;">
+                <i class="fas fa-lock"></i> Proceed to Secure Checkout
+            </button>
+            
+            <a href="purchase.html" class="cancel-btn">Cancel and go back</a>
+            
+            <div class="security-note">
+                <p><i class="fas fa-shield-alt"></i> Secure checkout powered by Polar. Your payment information is encrypted and protected.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session');
+            const errorParam = urlParams.get('error');
+            
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const errorMessage = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
+            const userInfo = document.getElementById('userInfo');
+            const checkoutBtn = document.getElementById('checkoutBtn');
+            const discordUsername = document.getElementById('discordUsername');
+            const productName = document.getElementById('productName');
+            
+            if (errorParam) {
+                loadingSpinner.style.display = 'none';
+                errorMessage.style.display = 'block';
+                errorText.textContent = 'Authentication failed. Please try again.';
+                return;
+            }
+            
+            if (!sessionId) {
+                loadingSpinner.style.display = 'none';
+                errorMessage.style.display = 'block';
+                errorText.textContent = 'Invalid session. Please start the purchase process again.';
+                return;
+            }
+            
+            loadingSpinner.style.display = 'block';
+            
+            try {
+                // Fetch session info
+                const response = await fetch(`/api/session/${sessionId}`);
+                
+                if (!response.ok) {
+                    throw new Error('Session expired or invalid');
+                }
+                
+                const data = await response.json();
+                
+                loadingSpinner.style.display = 'none';
+                userInfo.style.display = 'block';
+                checkoutBtn.style.display = 'flex';
+                
+                discordUsername.innerHTML = `<i class="fab fa-discord"></i> ${data.discordUsername}`;
+                productName.textContent = data.productName;
+                
+                // Handle checkout button click - open embedded checkout
+                checkoutBtn.addEventListener('click', async function() {
+                    checkoutBtn.disabled = true;
+                    checkoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Opening Checkout...';
+                    
+                    try {
+                        const checkoutResponse = await fetch(`/api/checkout-url/${sessionId}`);
+                        const checkoutData = await checkoutResponse.json();
+                        
+                        if (checkoutData.checkoutUrl) {
+                            // Use Polar embedded checkout
+                            if (typeof PolarEmbedCheckout !== 'undefined' && checkoutData.embedEnabled) {
+                                try {
+                                    const checkout = await PolarEmbedCheckout.create(
+                                        checkoutData.checkoutUrl,
+                                        'dark' // Use dark theme to match site
+                                    );
+                                    
+                                    // Reset button state
+                                    checkoutBtn.disabled = false;
+                                    checkoutBtn.innerHTML = '<i class="fas fa-lock"></i> Proceed to Secure Checkout';
+                                    
+                                    // Listen for successful payment
+                                    checkout.addEventListener('success', async (event) => {
+                                        console.log('Payment successful!', event.detail);
+                                        
+                                        // Prevent default redirect behavior
+                                        event.preventDefault();
+                                        
+                                        // Show success state
+                                        document.getElementById('checkoutCard').innerHTML = `
+                                            <div class="checkout-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
+                                                <i class="fas fa-check"></i>
+                                            </div>
+                                            <h1 class="checkout-title">Payment Successful!</h1>
+                                            <p class="checkout-subtitle">Your license key is being delivered to your Discord DMs...</p>
+                                            <div class="loading-spinner" style="display: block;"></div>
+                                            <p style="color: #94a3b8; margin-top: 20px;">Check your Discord messages from SwimHub Bot</p>
+                                        `;
+                                        
+                                        // Poll for license delivery
+                                        let attempts = 0;
+                                        const maxAttempts = 30; // 30 seconds max
+                                        
+                                        const pollStatus = async () => {
+                                            attempts++;
+                                            try {
+                                                const statusRes = await fetch(`/api/payment-status/${sessionId}`);
+                                                const statusData = await statusRes.json();
+                                                
+                                                if (statusData.status === 'completed') {
+                                                    // Redirect to success page
+                                                    window.location.href = `/success.html?session=${sessionId}`;
+                                                } else if (attempts < maxAttempts) {
+                                                    setTimeout(pollStatus, 1000);
+                                                } else {
+                                                    // Redirect anyway after timeout
+                                                    window.location.href = `/success.html?session=${sessionId}`;
+                                                }
+                                            } catch (err) {
+                                                if (attempts < maxAttempts) {
+                                                    setTimeout(pollStatus, 1000);
+                                                }
+                                            }
+                                        };
+                                        
+                                        pollStatus();
+                                    });
+                                    
+                                    // Listen for checkout close
+                                    checkout.addEventListener('close', () => {
+                                        console.log('Checkout closed');
+                                        checkoutBtn.disabled = false;
+                                        checkoutBtn.innerHTML = '<i class="fas fa-lock"></i> Proceed to Secure Checkout';
+                                    });
+                                    
+                                    // Listen for errors
+                                    checkout.addEventListener('error', (event) => {
+                                        console.error('Checkout error:', event);
+                                        checkoutBtn.disabled = false;
+                                        checkoutBtn.innerHTML = '<i class="fas fa-lock"></i> Proceed to Secure Checkout';
+                                    });
+                                    
+                                } catch (embedError) {
+                                    console.error('Embed error, falling back to redirect:', embedError);
+                                    window.location.href = checkoutData.checkoutUrl;
+                                }
+                            } else {
+                                // Fallback: redirect to checkout URL
+                                window.location.href = checkoutData.checkoutUrl;
+                            }
+                        } else {
+                            throw new Error('Failed to get checkout URL');
+                        }
+                    } catch (error) {
+                        checkoutBtn.disabled = false;
+                        checkoutBtn.innerHTML = '<i class="fas fa-lock"></i> Proceed to Secure Checkout';
+                        alert('Failed to proceed to checkout. Please try again.');
+                    }
+                });
+                
+            } catch (error) {
+                loadingSpinner.style.display = 'none';
+                errorMessage.style.display = 'block';
+                errorText.textContent = error.message || 'Failed to load session data.';
+            }
+        });
+    </script>
+</body>
+</html>
