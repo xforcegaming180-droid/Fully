@@ -339,6 +339,13 @@
                                     checkout.addEventListener('success', async (event) => {
                                         console.log('Payment successful!', event.detail);
                                         
+                                        // Extract checkout_id from Polar success event if available
+                                        const polarCheckoutId = event.detail?.checkoutId || 
+                                                               event.detail?.checkout_id || 
+                                                               event.detail?.id ||
+                                                               '';
+                                        console.log('Polar checkout ID:', polarCheckoutId);
+                                        
                                         // Prevent default redirect behavior
                                         event.preventDefault();
                                         
@@ -357,6 +364,11 @@
                                         let attempts = 0;
                                         const maxAttempts = 30; // 30 seconds max
                                         
+                                        // Build success URL with both session and checkout_id
+                                        const successUrl = polarCheckoutId 
+                                            ? `/success.html?session=${sessionId}&checkout_id=${polarCheckoutId}`
+                                            : `/success.html?session=${sessionId}`;
+                                        
                                         const pollStatus = async () => {
                                             attempts++;
                                             try {
@@ -365,12 +377,12 @@
                                                 
                                                 if (statusData.status === 'completed') {
                                                     // Redirect to success page
-                                                    window.location.href = `/success.html?session=${sessionId}`;
+                                                    window.location.href = successUrl;
                                                 } else if (attempts < maxAttempts) {
                                                     setTimeout(pollStatus, 1000);
                                                 } else {
                                                     // Redirect anyway after timeout
-                                                    window.location.href = `/success.html?session=${sessionId}`;
+                                                    window.location.href = successUrl;
                                                 }
                                             } catch (err) {
                                                 if (attempts < maxAttempts) {

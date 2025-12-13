@@ -350,6 +350,55 @@
         const infoMsg = document.getElementById('infoMsg');
         const infoText = document.getElementById('infoText');
 
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session');
+        const checkoutId = urlParams.get('checkout_id') || urlParams.get('checkoutId');
+
+        // On page load: try to auto-fetch session info and pre-fill email
+        document.addEventListener('DOMContentLoaded', async () => {
+            // First, try checkout_id polling (if Polar redirected with checkout_id)
+            if (checkoutId) {
+                showInfo('Checking your payment status...');
+                try {
+                    const res = await fetch(`/api/claim-key?checkout_id=${encodeURIComponent(checkoutId)}`);
+                    const data = await res.json();
+                    if (data.status === 'ready' && data.key) {
+                        showLicense(data.key);
+                        return;
+                    }
+                } catch (err) {
+                    console.log('Checkout ID lookup failed, falling back to email');
+                }
+            }
+
+            // Second, try to get session info and pre-fill email
+            if (sessionId) {
+                try {
+                    const res = await fetch(`/api/session/${sessionId}`);
+                    if (res.ok) {
+                        const session = await res.json();
+                        if (session.email) {
+                            emailInput.value = session.email;
+                        }
+                        // Check if license already delivered via session
+                        const statusRes = await fetch(`/api/payment-status/${sessionId}`);
+                        if (statusRes.ok) {
+                            const status = await statusRes.json();
+                            if (status.status === 'completed' && status.license_key) {
+                                showLicense(status.license_key);
+                                return;
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.log('Session lookup failed');
+                }
+            }
+
+            hideMessages();
+        });
+
         claimBtn.addEventListener('click', async () => {
             const email = emailInput.value.trim().toLowerCase();
             
@@ -374,9 +423,11 @@
                 if (data.success && data.licenseKey) {
                     showLicense(data.licenseKey);
                 } else if (data.status === 'pending') {
-                    showInfo('Payment still processing. Please wait a moment and try again.');
+                    showInfo('Payment still processing. This may take up to 30 seconds. Please wait and try again.');
                 } else if (data.status === 'not_found') {
-                    showError('No purchase found for this email. Check that you completed payment and used the correct email.');
+                    showError('No purchase found for this email. Make sure you use the same email you entered during Polar checkout (not your Discord email).');
+                } else if (data.status === 'no_stock') {
+                    showError('License keys are temporarily out of stock. Please contact support and we will resolve this immediately.');
                 } else {
                     showError(data.error || 'Failed to claim license. Contact support.');
                 }
