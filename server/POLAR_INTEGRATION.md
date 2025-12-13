@@ -1,43 +1,62 @@
 # Polar.sh Integration Setup Guide
 
 ## Overview
-This system integrates with Polar.sh to automatically deliver license keys to customers after purchase. The workflow is:
+
+This system integrates with Polar.sh to automatically deliver license keys to customers after purchase. When a customer buys from Polar.sh, all data flows through your Railway PostgreSQL database.
+
+### Purchase Flow
+
+```
+Customer → Polar.sh → Webhook → Your Server → PostgreSQL → License Key
+                                     ↓
+                            Discord DM to Admin
+```
 
 1. Customer completes purchase on Polar.sh
-2. Polar sends webhook to your server
-3. Server assigns a license key and stores it with checkout_id
-4. Polar redirects customer to success page with checkout_id
-5. Success page polls server to retrieve and display the license key
+2. Polar sends webhook to `https://your-railway-url.up.railway.app/webhook/polar`
+3. Server parses payment data and stores in `polar_purchases` table
+4. Server assigns an available license key from `license_stock` table
+5. Customer enters their email on success page to retrieve key
 6. Admin receives Discord notification with purchase details
 
-## Prerequisites
+## Database Tables
 
-- Node.js 18+ 
-- PostgreSQL database
-- Discord bot with DM permissions
-- Polar.sh account with webhook support
+The server automatically creates these tables on startup:
 
-## Installation
-
-1. Install dependencies:
-```bash
-cd server
-npm install
+### `polar_purchases` - Stores all Polar webhook data
+```sql
+-- Created automatically - stores every purchase from Polar
+polar_purchases (
+  id, checkout_id, customer_email, product_id, product_name, 
+  product_type, amount, currency, license_key, status, 
+  discord_id, polar_customer_id, raw_payload, created_at, completed_at
+)
 ```
 
-2. Set up environment variables (see Configuration section below)
-
-3. Run the server:
-```bash
-npm start
+### `license_stock` - Your license key inventory
+```sql
+-- Add keys here via /addlicense Discord command
+license_stock (
+  id, license_key, product_type, status, claimed, 
+  claimed_by, claimed_at, customer_email, created_at
+)
 ```
 
-## Configuration
+### `purchase_log` - Transaction history
+```sql
+-- Auto-populated when sales complete
+purchase_log (
+  id, license_key, customer_email, customer_discord_id,
+  product_type, amount, payment_method, transaction_id, purchase_date
+)
+```
 
-Create a `.env` file in the `server` directory with the following variables:
+## Environment Variables
+
+Add these to your Railway environment:
 
 ```bash
-# Database
+# PostgreSQL (Railway provides this automatically)
 DATABASE_URL=postgresql://user:password@host:port/database
 
 # Discord Bot
@@ -47,152 +66,182 @@ DISCORD_CLIENT_SECRET=your_discord_client_secret
 DISCORD_GUILD_ID=your_discord_server_id
 ADMIN_DISCORD_ID=your_discord_user_id
 
-# Polar.sh
+# Polar.sh Webhook
 POLAR_WEBHOOK_SECRET=your_polar_webhook_secret
-POLAR_SKIP_SIGNATURE=false  # Set to true only for testing
+POLAR_SKIP_SIGNATURE=false  # Only set true for testing
 
 # Server
 PORT=3000
-WEBSITE_URL=https://your-domain.com
+WEBSITE_URL=https://your-railway-url.up.railway.app
 ```
 
-## Database Setup
+## Polar.sh Dashboard Setup
 
-The server automatically creates the required tables on startup:
+### 1. Create Products
 
-### `licenses` Table
-Stores available and assigned license keys.
+In Polar.sh dashboard, create your products. The system auto-maps products by name:
 
-```sql
-CREATE TABLE licenses (
-  id SERIAL PRIMARY KEY,
-  key_value TEXT UNIQUE NOT NULL,
-  status TEXT DEFAULT 'available',  -- 'available' or 'used'
-  owner_email TEXT,
-  checkout_id TEXT,
-  created_at TIMESTAMP DEFAULT now(),
-  updated_at TIMESTAMP DEFAULT now()
-);
+| Product Name Contains | Maps To |
+|----------------------|---------|
+| "master" + "lifetime" | `master-lifetime` |
+| "master" + "monthly" | `master-monthly` |
+| "regular" + "lifetime" | `regular-lifetime` |
+| "regular" + "monthly" | `regular-monthly` |
+
+Or configure exact mappings in `server/index.js`:
+```javascript
+const POLAR_PRODUCT_MAP = {
+  'prod_abc123': 'regular-monthly',
+  'prod_def456': 'regular-lifetime',
+  'prod_ghi789': 'master-monthly',
+  'prod_jkl012': 'master-lifetime',
+};
 ```
 
-### Adding License Keys
-
-You can add keys via the API:
-
-```bash
-curl -X POST http://localhost:3000/api/licenses/add \
-  -H "Content-Type: application/json" \
-  -d '{
-    "keys": ["KEY1-XXXX-XXXX", "KEY2-XXXX-XXXX"],
-    "token": "your_internal_process_token"
-  }'
-```
-
-Or directly in the database:
-
-```sql
-INSERT INTO licenses (key_value, status) 
-VALUES ('YOUR-KEY-HERE', 'available');
-```
-
-## Polar.sh Configuration
-
-### 1. Set Up Webhook
+### 2. Set Up Webhook
 
 In your Polar.sh dashboard:
 
-1. Go to Webhooks settings
-2. Add webhook URL: `https://your-domain.com/webhook/polar`
-3. Copy the webhook secret to your `.env` file as `POLAR_WEBHOOK_SECRET`
-4. Enable the following events:
-   - `checkout.completed`
-   - `order.created`
-   - `checkout.updated`
-   - `payment.success`
+1. Go to **Settings → Webhooks**
+2. Click "Add Webhook"
+3. Enter webhook URL: `https://your-railway-url.up.railway.app/webhook/polar`
+4. Copy the webhook secret and add to Railway as `POLAR_WEBHOOK_SECRET`
+5. Enable these events:
+   - `checkout.completed` ✅
+   - `order.created` ✅
+   - `order.paid` ✅
 
-### 2. Configure Success URL
+### 3. Configure Success URL
 
 Set your Polar product's success URL to:
-
 ```
-https://your-domain.com/success.html?checkout_id={{CHECKOUT_ID}}
+https://your-railway-url.up.railway.app/success.html
 ```
 
-Make sure Polar replaces `{{CHECKOUT_ID}}` with the actual checkout ID.
+The customer will enter their email to claim their key (no checkout_id in URL needed).
+
+## How It Works
+
+### When Polar Webhook Fires:
+
+1. **Webhook received** at `/webhook/polar`
+2. **Signature verified** (using `POLAR_WEBHOOK_SECRET`)
+3. **Data extracted**:
+   - Customer email
+   - Product ID & name
+   - Payment amount
+   - Checkout ID
+4. **Product mapped** to internal type (regular/master, monthly/lifetime)
+5. **License key assigned** from `license_stock` table
+6. **Purchase stored** in `polar_purchases` table
+7. **Admin notified** via Discord DM
+
+### When Customer Claims Key:
+
+1. Customer visits `/success.html`
+2. Enters email used for payment
+3. Server checks `polar_purchases` table
+4. Returns license key if found
 
 ## API Endpoints
-
-### GET /webhook/polar
-Health check endpoint to verify the webhook is accessible and configured.
-
-**Response:**
-```json
-{
-  "status": "ok",
-  "message": "Polar webhook endpoint is active",
-  "method": "POST",
-  "note": "This endpoint accepts POST requests from Polar.sh webhooks"
-}
-```
-
-This endpoint is useful for:
-- Verifying the webhook URL is accessible
-- Testing network connectivity and routing
-- Confirming the server is running and responding
 
 ### POST /webhook/polar
 Receives webhooks from Polar.sh when purchases are completed.
 
-**Headers:**
-- `webhook-signature`: Signature for verification
-- `webhook-timestamp`: Timestamp for signature
+**What it does:**
+- Verifies webhook signature
+- Extracts customer email, product, amount from payload
+- Assigns license key from `license_stock`
+- Stores everything in `polar_purchases`
+- Notifies admin via Discord
 
-**Body:**
+### POST /api/claim-by-email
+Customer claims their license key using email.
+
+**Request:**
+```json
+{ "email": "customer@example.com" }
+```
+
+**Response (success):**
 ```json
 {
-  "type": "checkout.completed",
-  "id": "event_id",
-  "data": {
-    "id": "checkout_123",
-    "customer": {
-      "email": "customer@example.com"
-    }
-  }
+  "success": true,
+  "licenseKey": "XXXXX-XXXXX-XXXXX",
+  "status": "completed"
 }
 ```
+
+### GET /api/claim-key?checkout_id=xxx
+Polling endpoint (alternative to email claim).
 
 **Response:**
 ```json
-{
-  "received": true,
-  "success": true
-}
+{ "status": "ready", "key": "XXXXX-XXXXX-XXXXX" }
 ```
 
-### GET /api/claim-key
-Polling endpoint for frontend to retrieve license keys.
+## Adding License Keys
 
-**Query Parameters:**
-- `checkout_id` (required): The checkout ID from Polar
+Use the Discord bot `/addlicense` command:
 
-**Response (pending):**
-```json
-{
-  "status": "pending"
-}
+```
+/addlicense key:XXXXX-XXXXX-XXXXX tier:swimhub
 ```
 
-**Response (ready):**
-```json
-{
-  "status": "ready",
-  "key": "XXXXX-XXXXX-XXXXX"
-}
+Or add directly to database:
+```sql
+INSERT INTO license_stock (license_key, product_type, status) 
+VALUES ('YOUR-KEY-HERE', 'swimhub', 'available');
 ```
 
-**Rate Limits:**
-- Webhook: 100 requests per 15 minutes per IP
-- Polling: 120 requests per minute per IP
+## Viewing Sales Data
+
+### In PostgreSQL (Railway):
+
+```sql
+-- View all purchases
+SELECT * FROM polar_purchases ORDER BY created_at DESC;
+
+-- View today's sales
+SELECT * FROM polar_purchases WHERE created_at >= CURRENT_DATE;
+
+-- Count sales by product
+SELECT product_type, COUNT(*) FROM polar_purchases GROUP BY product_type;
+
+-- View stock levels
+SELECT 
+  product_type,
+  COUNT(*) FILTER (WHERE status = 'available' AND claimed = FALSE) as available,
+  COUNT(*) FILTER (WHERE claimed = TRUE) as sold
+FROM license_stock GROUP BY product_type;
+```
+
+### Via Discord Bot:
+
+```
+/stock - View current inventory levels
+```
+
+## Troubleshooting
+
+### Webhook not receiving data
+
+1. Check Railway logs: `railway logs`
+2. Verify webhook URL is correct
+3. Test webhook health: `GET https://your-url/webhook/polar`
+4. Set `POLAR_SKIP_SIGNATURE=true` temporarily to debug
+
+### No license keys available
+
+1. Check stock: `SELECT * FROM license_stock WHERE status = 'available'`
+2. Add keys via `/addlicense` command
+3. Bot will DM admin when out of stock
+
+### Customer can't claim key
+
+1. Check email matches exactly (lowercase)
+2. Query: `SELECT * FROM polar_purchases WHERE customer_email = 'email@example.com'`
+3. Check status column - should be 'completed'
 
 ## Frontend Integration
 
