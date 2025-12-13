@@ -1577,6 +1577,17 @@ const commands = [
   new SlashCommandBuilder()
     .setName('addlicense')
     .setDescription('Add license keys to the system')
+    .addStringOption(option =>
+      option.setName('tier')
+        .setDescription('Product tier for these keys')
+        .setRequired(true)
+        .addChoices(
+          { name: 'SwimHub (Universal)', value: 'swimhub' },
+          { name: 'Regular Monthly', value: 'regular-monthly' },
+          { name: 'Regular Lifetime', value: 'regular-lifetime' },
+          { name: 'Master Monthly', value: 'master-monthly' },
+          { name: 'Master Lifetime', value: 'master-lifetime' }
+        ))
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   new SlashCommandBuilder()
@@ -1613,10 +1624,12 @@ discordClient.on('interactionCreate', async (interaction) => {
           return interaction.reply({ content: '❌ Admin only', flags: MessageFlags.Ephemeral });
         }
 
+        const tier = interaction.options.getString('tier');
+
         // Show a modal for entering license keys (one per line)
         const modal = new ModalBuilder()
-          .setCustomId('addlicense_modal')
-          .setTitle('Add License Keys');
+          .setCustomId(`addlicense_modal_${tier}`)
+          .setTitle(`Add License Keys (${tier})`);
 
         const keysInput = new TextInputBuilder()
           .setCustomId('license_keys')
@@ -1708,12 +1721,14 @@ discordClient.on('interactionCreate', async (interaction) => {
   else if (interaction.isModalSubmit()) {
     try {
       // Handle modal submission for adding license keys
-      if (interaction.customId === 'addlicense_modal') {
+      if (interaction.customId.startsWith('addlicense_modal_')) {
         const isAdmin = interaction.member?.permissions.has(PermissionFlagsBits.Administrator);
         if (!isAdmin) {
           return interaction.reply({ content: '❌ Admin only', flags: MessageFlags.Ephemeral });
         }
 
+        // Extract tier from modal customId (e.g., "addlicense_modal_swimhub")
+        const tier = interaction.customId.replace('addlicense_modal_', '');
         const keysInput = interaction.fields.getTextInputValue('license_keys');
         
         // Split by newlines and filter empty lines
@@ -1736,7 +1751,8 @@ discordClient.on('interactionCreate', async (interaction) => {
 
         for (const key of keys) {
           try {
-            const result = await addLicenseToLicensesTable(key.toUpperCase());
+            // Add to license_stock table with the specified tier/product type
+            const result = await addLicenseKeyToStock(key.toUpperCase(), tier);
             if (result) {
               addedCount++;
             } else {
@@ -1748,16 +1764,18 @@ discordClient.on('interactionCreate', async (interaction) => {
           }
         }
 
-        // Get updated stats
-        const stats = await getLicensesStats();
+        // Get updated stats from license_stock
+        const stockByType = await getStockByProductType();
+        const tierStats = stockByType.find(s => s.product_type === tier) || { available: 0, total: 0 };
 
         const embed = new EmbedBuilder()
           .setColor('#10b981')
           .setTitle('✅ License Keys Added')
           .addFields(
+            { name: '📦 Product Tier', value: tier, inline: false },
             { name: '📥 Keys Added', value: addedCount.toString(), inline: true },
-            { name: '📊 Total Available', value: stats.available.toString(), inline: true },
-            { name: '🔢 Total in System', value: stats.total.toString(), inline: true }
+            { name: '📊 Available (this tier)', value: (parseInt(tierStats.available) || 0).toString(), inline: true },
+            { name: '🔢 Total (this tier)', value: (parseInt(tierStats.total) || 0).toString(), inline: true }
           )
           .setFooter({ text: 'SwimHub License System' })
           .setTimestamp();
