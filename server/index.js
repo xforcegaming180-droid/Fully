@@ -895,23 +895,29 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
     console.log(`🌐 Request IP: ${buyerIp}`);
     console.log(`📨 Webhook Event Type: ${event.type}`);
 
-    // ONLY process checkout.completed - ignore ALL other event types to prevent duplicates
-    // Polar sends multiple events (checkout.completed, order.created, order.paid, etc.) for the same purchase
-    if (event.type !== 'checkout.completed') {
-      console.log(`⏭️ Ignoring event type: ${event.type} (only processing checkout.completed)`);
-      return res.status(200).json({ received: true, ignored: true, reason: 'only_processing_checkout_completed' });
+    // ONLY process order.paid - this is the definitive "payment successful" event from Polar
+    // Polar sends: checkout.updated (multiple), order.created, order.paid
+    // We ONLY want order.paid to avoid duplicates
+    if (event.type !== 'order.paid') {
+      console.log(`⏭️ Ignoring event type: ${event.type} (only processing order.paid)`);
+      return res.status(200).json({ received: true, ignored: true, reason: 'only_processing_order_paid' });
     }
 
-    console.log('📦 Processing checkout.completed event');
+    console.log('📦 Processing order.paid event - PAYMENT CONFIRMED!');
       
     // Parse Polar webhook payload
     // Polar.sh sends data in event.data for most events
     const data = event.data || event;
     
-    // Extract checkout ID - use multiple fields to find it
-    // For checkout.completed, data.id IS the checkout_id
-    const checkout_id = data.id || data.checkout_id || data.order_id || eventId;
+    // Log full payload for debugging
+    console.log('📋 Full order.paid payload:', JSON.stringify(data, null, 2));
     
+    // For order.paid, the order ID is in data.id, but we need checkout_id for consistency
+    // The checkout_id might be in data.checkout_id or we use order_id
+    const order_id = data.id || '';
+    const checkout_id = data.checkout_id || data.checkout?.id || order_id || eventId;
+    
+    console.log(`🔑 Order ID: ${order_id}`);
     console.log(`🔑 Checkout ID for deduplication: ${checkout_id}`);
     
     // CRITICAL: Check in-memory cache first (fast path)
@@ -943,10 +949,13 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
     // Add to in-memory cache IMMEDIATELY to prevent race conditions
     processedWebhooks.add(checkout_id);
     
-    // Extract customer info
+    // Extract customer info - order.paid has customer nested
     const customer = data.customer || data.user || data.buyer || {};
-    const customer_email = (customer.email || data.email || data.customer_email || '').toLowerCase().trim();
+    const customer_email = (customer.email || data.customer_email || data.email || '').toLowerCase().trim();
     const polar_customer_id = customer.id || data.customer_id || '';
+    
+    console.log(`📧 Extracted customer email: ${customer_email}`);
+    console.log(`🆔 Polar customer ID: ${polar_customer_id}`);
     
     // ADDITIONAL DEDUP: Check if this email just bought in the last 60 seconds
     try {
@@ -967,28 +976,28 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
       // Continue if this check fails
     }
     
-    // Extract product info
-    const product = data.product || data.items?.[0]?.product || {};
+    // Extract product info - order.paid has product in various places
+    const product = data.product || data.subscription?.product || data.items?.[0]?.product || {};
     const product_id = product.id || data.product_id || '';
     const product_name = product.name || data.product_name || 'SwimHub License';
     
-    // Extract amount
-    const amount = data.amount || data.total || product.price || 0;
-      const currency = data.currency || 'usd';
+    // Extract amount - order.paid uses amount in cents
+    const amount = data.amount || data.total_amount || data.total || product.price || 0;
+    const currency = data.currency || 'usd';
 
-      console.log(`📧 Customer Email: ${customer_email}`);
-      console.log(`🏷️ Product: ${product_name} (${product_id})`);
-      console.log(`💵 Amount: ${amount} ${currency}`);
-      console.log(`🔑 Checkout ID: ${checkout_id}`);
+    console.log(`📧 Customer Email: ${customer_email}`);
+    console.log(`🏷️ Product: ${product_name} (${product_id})`);
+    console.log(`💵 Amount: ${amount} ${currency}`);
+    console.log(`🔑 Checkout ID: ${checkout_id}`);
 
-      if (!customer_email) {
-        console.error('❌ No customer email in webhook payload');
-        console.log('Full payload:', JSON.stringify(event, null, 2));
-        return res.status(200).json({ received: true, error: 'no_customer_email' });
-      }
+    if (!customer_email) {
+      console.error('❌ No customer email in webhook payload');
+      console.log('Full payload:', JSON.stringify(event, null, 2));
+      return res.status(200).json({ received: true, error: 'no_customer_email' });
+    }
 
-      // Determine product type
-      const product_type = mapPolarProduct(product_id, product_name);
+    // Determine product type
+    const product_type = mapPolarProduct(product_id, product_name);
       console.log(`📦 Mapped to product type: ${product_type}`);
 
       const client = await pool.connect();
