@@ -893,61 +893,87 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
                     req.socket?.remoteAddress || 
                     'Unknown';
     console.log(`🌐 Request IP: ${buyerIp}`);
+    console.log(`📨 Webhook Event Type: ${event.type}`);
 
-    // Handle successful checkout/order events
-    const successEvents = ['checkout.completed', 'order.created', 'checkout.updated', 'order.paid'];
+    // ONLY process checkout.completed - ignore ALL other event types to prevent duplicates
+    // Polar sends multiple events (checkout.completed, order.created, order.paid, etc.) for the same purchase
+    if (event.type !== 'checkout.completed') {
+      console.log(`⏭️ Ignoring event type: ${event.type} (only processing checkout.completed)`);
+      return res.status(200).json({ received: true, ignored: true, reason: 'only_processing_checkout_completed' });
+    }
 
-    if (successEvents.includes(event.type)) {
-      console.log('📦 Processing successful payment event:', event.type);
+    console.log('📦 Processing checkout.completed event');
       
-      // Parse Polar webhook payload
-      // Polar.sh sends data in event.data for most events
-      const data = event.data || event;
-      
-      // Extract checkout/order ID - this is our PRIMARY deduplication key
-      const checkout_id = data.id || data.checkout_id || data.order_id || eventId;
-      
-      // CRITICAL: Check in-memory cache first (fast path)
-      if (processedWebhooks.has(checkout_id)) {
-        console.log('⚠️ Duplicate checkout ignored (in-memory cache):', checkout_id);
-        return res.status(200).json({ received: true, duplicate: true });
+    // Parse Polar webhook payload
+    // Polar.sh sends data in event.data for most events
+    const data = event.data || event;
+    
+    // Extract checkout ID - use multiple fields to find it
+    // For checkout.completed, data.id IS the checkout_id
+    const checkout_id = data.id || data.checkout_id || data.order_id || eventId;
+    
+    console.log(`🔑 Checkout ID for deduplication: ${checkout_id}`);
+    
+    // CRITICAL: Check in-memory cache first (fast path)
+    if (processedWebhooks.has(checkout_id)) {
+      console.log('⚠️ Duplicate checkout ignored (in-memory cache):', checkout_id);
+      return res.status(200).json({ received: true, duplicate: true });
+    }
+    
+    // CRITICAL: Check DATABASE for existing purchase BEFORE any processing
+    // This handles server restarts where in-memory cache is lost
+    try {
+      const existingCheck = await pool.query(
+        'SELECT id, license_key FROM polar_purchases WHERE checkout_id = $1',
+        [checkout_id]
+      );
+      if (existingCheck.rows.length > 0) {
+        console.log('⚠️ Duplicate checkout ignored (found in database):', checkout_id);
+        processedWebhooks.add(checkout_id); // Add to cache
+        return res.status(200).json({ 
+          received: true, 
+          duplicate: true,
+          license_key: existingCheck.rows[0].license_key 
+        });
       }
-      
-      // CRITICAL: Check DATABASE for existing purchase BEFORE any processing
-      // This handles server restarts where in-memory cache is lost
-      try {
-        const existingCheck = await pool.query(
-          'SELECT id, license_key FROM polar_purchases WHERE checkout_id = $1',
-          [checkout_id]
-        );
-        if (existingCheck.rows.length > 0) {
-          console.log('⚠️ Duplicate checkout ignored (found in database):', checkout_id);
-          processedWebhooks.add(checkout_id); // Add to cache
-          return res.status(200).json({ 
-            received: true, 
-            duplicate: true,
-            license_key: existingCheck.rows[0].license_key 
-          });
-        }
-      } catch (dbCheckErr) {
-        console.error('⚠️ Database check error (continuing):', dbCheckErr.message);
+    } catch (dbCheckErr) {
+      console.error('⚠️ Database check error (continuing):', dbCheckErr.message);
+    }
+    
+    // Add to in-memory cache IMMEDIATELY to prevent race conditions
+    processedWebhooks.add(checkout_id);
+    
+    // Extract customer info
+    const customer = data.customer || data.user || data.buyer || {};
+    const customer_email = (customer.email || data.email || data.customer_email || '').toLowerCase().trim();
+    const polar_customer_id = customer.id || data.customer_id || '';
+    
+    // ADDITIONAL DEDUP: Check if this email just bought in the last 60 seconds
+    try {
+      const recentPurchase = await pool.query(
+        `SELECT id, license_key FROM polar_purchases 
+         WHERE customer_email = $1 AND created_at > NOW() - INTERVAL '60 seconds'`,
+        [customer_email]
+      );
+      if (recentPurchase.rows.length > 0) {
+        console.log('⚠️ Duplicate purchase ignored (same email within 60s):', customer_email);
+        return res.status(200).json({ 
+          received: true, 
+          duplicate: true,
+          license_key: recentPurchase.rows[0].license_key 
+        });
       }
-      
-      // Add to in-memory cache IMMEDIATELY to prevent race conditions
-      processedWebhooks.add(checkout_id);
-      
-      // Extract customer info
-      const customer = data.customer || data.user || data.buyer || {};
-      const customer_email = (customer.email || data.email || data.customer_email || '').toLowerCase().trim();
-      const polar_customer_id = customer.id || data.customer_id || '';
-      
-      // Extract product info
-      const product = data.product || data.items?.[0]?.product || {};
-      const product_id = product.id || data.product_id || '';
-      const product_name = product.name || data.product_name || 'SwimHub License';
-      
-      // Extract amount
-      const amount = data.amount || data.total || product.price || 0;
+    } catch (e) {
+      // Continue if this check fails
+    }
+    
+    // Extract product info
+    const product = data.product || data.items?.[0]?.product || {};
+    const product_id = product.id || data.product_id || '';
+    const product_name = product.name || data.product_name || 'SwimHub License';
+    
+    // Extract amount
+    const amount = data.amount || data.total || product.price || 0;
       const currency = data.currency || 'usd';
 
       console.log(`📧 Customer Email: ${customer_email}`);
@@ -1147,11 +1173,7 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
       } finally {
         client.release();
       }
-    }
 
-    // Log other event types for debugging
-    console.log(`ℹ️ Received non-checkout event: ${event.type}`);
-    return res.status(200).json({ received: true, event_type: event.type });
   } catch (error) {
     console.error('Polar webhook error:', error);
     return res.status(200).json({ received: true, error: error.message });
