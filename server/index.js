@@ -724,19 +724,19 @@ app.get('/webhook/polar', (req, res) => {
 // Map your Polar.sh product IDs to our internal product types
 // You can find product IDs in your Polar.sh dashboard
 const POLAR_PRODUCT_MAP = {
-  // Add your Polar product IDs here
+  // Add your Polar product IDs here if you know them
   // 'polar_product_id': 'internal_product_type'
-  // Examples:
-  // 'prod_abc123': 'regular-monthly',
-  // 'prod_def456': 'regular-lifetime',
-  // 'prod_ghi789': 'master-monthly',
-  // 'prod_jkl012': 'master-lifetime',
   
   // Fallback: if product name contains these keywords, map automatically
-  'default': 'regular-lifetime' // Default product type if no match found
+  'default': 'regular-monthly' // Default product type if no match found
 };
 
 // Helper function to determine product type from Polar data
+// Mapping for Minion v2 products:
+// - Basic = regular-monthly
+// - Intermediate = regular-lifetime  
+// - Advanced = master-monthly
+// - Full Access = master-lifetime
 function mapPolarProduct(productId, productName) {
   // First check direct product ID mapping
   if (POLAR_PRODUCT_MAP[productId]) {
@@ -746,6 +746,13 @@ function mapPolarProduct(productId, productName) {
   // Try to infer from product name
   const name = (productName || '').toLowerCase();
   
+  // Minion v2 naming convention
+  if (name.includes('full access') || name.includes('full-access')) return 'master-lifetime';
+  if (name.includes('advanced')) return 'master-monthly';
+  if (name.includes('intermediate')) return 'regular-lifetime';
+  if (name.includes('basic')) return 'regular-monthly';
+  
+  // Original SwimHub naming convention (fallback)
   if (name.includes('master') && name.includes('lifetime')) return 'master-lifetime';
   if (name.includes('master') && name.includes('month')) return 'master-monthly';
   if (name.includes('regular') && name.includes('lifetime')) return 'regular-lifetime';
@@ -754,7 +761,7 @@ function mapPolarProduct(productId, productName) {
   if (name.includes('month')) return 'regular-monthly';
   
   // Return default
-  return POLAR_PRODUCT_MAP['default'] || 'regular-lifetime';
+  return POLAR_PRODUCT_MAP['default'] || 'regular-monthly';
 }
 
 // Polar webhook
@@ -947,14 +954,15 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
 
         // Get an available license key from license_stock table
         // Use row-level locking to prevent race conditions
-        const keyResult = await client.query(
+        // First try to match specific product type, then fall back to universal 'swimhub' keys, then any available key
+        let keyResult = await client.query(
           `UPDATE license_stock 
            SET status = 'assigned', claimed = TRUE, claimed_at = now(), 
                customer_email = $1, updated_at = now()
            WHERE id = (
              SELECT id FROM license_stock 
              WHERE status = 'available' AND claimed = FALSE 
-             AND (product_type = $2 OR product_type = 'swimhub')
+             AND product_type = $2
              ORDER BY created_at ASC 
              LIMIT 1 
              FOR UPDATE SKIP LOCKED
@@ -963,11 +971,48 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
           [customer_email, product_type]
         );
 
+        // If no specific product type key, try universal 'swimhub' keys
+        if (keyResult.rows.length === 0) {
+          keyResult = await client.query(
+            `UPDATE license_stock 
+             SET status = 'assigned', claimed = TRUE, claimed_at = now(), 
+                 customer_email = $1, updated_at = now()
+             WHERE id = (
+               SELECT id FROM license_stock 
+               WHERE status = 'available' AND claimed = FALSE 
+               AND product_type = 'swimhub'
+               ORDER BY created_at ASC 
+               LIMIT 1 
+               FOR UPDATE SKIP LOCKED
+             ) 
+             RETURNING license_key, product_type`,
+            [customer_email]
+          );
+        }
+
+        // Last resort: try ANY available key
+        if (keyResult.rows.length === 0) {
+          keyResult = await client.query(
+            `UPDATE license_stock 
+             SET status = 'assigned', claimed = TRUE, claimed_at = now(), 
+                 customer_email = $1, updated_at = now()
+             WHERE id = (
+               SELECT id FROM license_stock 
+               WHERE status = 'available' AND claimed = FALSE 
+               ORDER BY created_at ASC 
+               LIMIT 1 
+               FOR UPDATE SKIP LOCKED
+             ) 
+             RETURNING license_key, product_type`,
+            [customer_email]
+          );
+        }
+
         let licenseKey = null;
 
         if (keyResult.rows.length > 0) {
           licenseKey = keyResult.rows[0].license_key;
-          console.log(`✅ Assigned license key from stock: ${licenseKey}`);
+          console.log(`✅ Assigned license key from stock: ${licenseKey} (type: ${keyResult.rows[0].product_type})`);
         } else {
           // Try the licenses table as fallback
           const licenseResult = await client.query(
