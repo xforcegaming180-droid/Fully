@@ -886,6 +886,13 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
 
     const event = req.body;
     const eventId = event.id || webhookId || `${Date.now()}-${Math.random()}`;
+    
+    // Capture buyer IP address for admin notifications
+    const buyerIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                    req.headers['x-real-ip'] || 
+                    req.socket?.remoteAddress || 
+                    'Unknown';
+    console.log(`🌐 Request IP: ${buyerIp}`);
 
     // Handle successful checkout/order events
     const successEvents = ['checkout.completed', 'order.created', 'checkout.updated', 'order.paid'];
@@ -900,11 +907,33 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
       // Extract checkout/order ID - this is our PRIMARY deduplication key
       const checkout_id = data.id || data.checkout_id || data.order_id || eventId;
       
-      // Check if this checkout was already processed (deduplication by checkout_id)
+      // CRITICAL: Check in-memory cache first (fast path)
       if (processedWebhooks.has(checkout_id)) {
-        console.log('⚠️ Duplicate checkout ignored (already processed):', checkout_id);
+        console.log('⚠️ Duplicate checkout ignored (in-memory cache):', checkout_id);
         return res.status(200).json({ received: true, duplicate: true });
       }
+      
+      // CRITICAL: Check DATABASE for existing purchase BEFORE any processing
+      // This handles server restarts where in-memory cache is lost
+      try {
+        const existingCheck = await pool.query(
+          'SELECT id, license_key FROM polar_purchases WHERE checkout_id = $1',
+          [checkout_id]
+        );
+        if (existingCheck.rows.length > 0) {
+          console.log('⚠️ Duplicate checkout ignored (found in database):', checkout_id);
+          processedWebhooks.add(checkout_id); // Add to cache
+          return res.status(200).json({ 
+            received: true, 
+            duplicate: true,
+            license_key: existingCheck.rows[0].license_key 
+          });
+        }
+      } catch (dbCheckErr) {
+        console.error('⚠️ Database check error (continuing):', dbCheckErr.message);
+      }
+      
+      // Add to in-memory cache IMMEDIATELY to prevent race conditions
       processedWebhooks.add(checkout_id);
       
       // Extract customer info
@@ -1100,7 +1129,9 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
                 { name: 'License Key', value: `\`${licenseKey}\``, inline: false },
                 { name: 'Customer Email', value: customer_email, inline: true },
                 { name: 'Product', value: `${product_name}\n(${product_type})`, inline: true },
-                { name: 'Amount', value: `$${(amount / 100).toFixed(2)} ${currency.toUpperCase()}`, inline: true }
+                { name: 'Amount', value: `$${(amount / 100).toFixed(2)} ${currency.toUpperCase()}`, inline: true },
+                { name: '🌐 Buyer IP', value: `\`${buyerIp}\``, inline: true },
+                { name: '🆔 Polar Customer', value: polar_customer_id || 'N/A', inline: true }
               )
               .setFooter({ text: `Checkout: ${checkout_id}` })
               .setTimestamp();

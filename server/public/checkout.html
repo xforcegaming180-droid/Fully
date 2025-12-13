@@ -4,213 +4,448 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checkout - SwimHub</title>
-    <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Polar Embed Checkout -->
     <script src="https://cdn.jsdelivr.net/npm/@polar-sh/checkout@0.1/dist/embed.global.js" defer></script>
+    
+    <!-- Apple/Claude Inspired Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #0a0a0a;
+            --bg-card: rgba(18, 18, 18, 0.8);
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --border-accent: rgba(255, 255, 255, 0.1);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-tertiary: rgba(255, 255, 255, 0.4);
+            --accent-orange: #FF6B35;
+            --accent-coral: #FF8C61;
+            --accent-green: #10b981;
+            --accent-blue: #3b82f6;
+            --discord-brand: #5865F2;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+        }
+
+        /* Ambient Background Glow - Claude Style */
+        .ambient-glow {
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            pointer-events: none;
+            z-index: 0;
+            background: 
+                radial-gradient(ellipse at 30% 20%, rgba(255, 107, 53, 0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(88, 101, 242, 0.03) 0%, transparent 50%);
+            animation: ambientShift 20s ease-in-out infinite;
+        }
+
+        @keyframes ambientShift {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(-2%, 2%) rotate(1deg); }
+        }
+
         .checkout-container {
-            max-width: 600px;
+            max-width: 520px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 60px 24px;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            position: relative;
+            z-index: 1;
         }
-        
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-tertiary);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 40px;
+            transition: color 0.2s ease;
+            letter-spacing: -0.01em;
+        }
+
+        .back-link:hover {
+            color: var(--text-secondary);
+        }
+
+        /* Main Checkout Card */
         .checkout-card {
-            background: rgba(30, 41, 59, 0.9);
-            backdrop-filter: blur(20px);
+            background: var(--bg-card);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--border-subtle);
             border-radius: 20px;
-            padding: 40px;
-            border: 1px solid rgba(0, 212, 255, 0.2);
-            text-align: center;
-            animation: cardFadeIn 0.6s ease-out;
+            padding: 48px 40px;
+            position: relative;
+            overflow: hidden;
         }
-        
+
+        .checkout-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.08), 
+                transparent);
+        }
+
+        /* Icon */
         .checkout-icon {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #00d4ff, #3b82f6);
-            border-radius: 50%;
+            width: 72px;
+            height: 72px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, var(--discord-brand), #7c3aed);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 30px;
-            font-size: 2rem;
+            margin: 0 auto 32px;
+            font-size: 28px;
             color: white;
-            box-shadow: 0 10px 40px rgba(0, 212, 255, 0.3);
+            box-shadow: 
+                0 0 40px rgba(88, 101, 242, 0.3),
+                0 8px 32px rgba(0, 0, 0, 0.4);
         }
-        
+
         .checkout-title {
-            font-size: 2rem;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, #ffffff 0%, #00d4ff 100%);
+            font-size: 28px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-        
+
         .checkout-subtitle {
-            color: #94a3b8;
-            margin-bottom: 30px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 15px;
+            margin-bottom: 36px;
+            font-weight: 400;
         }
-        
+
+        /* Loading Spinner */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 32px 0;
+        }
+
+        .loading-spinner {
+            width: 36px;
+            height: 36px;
+            border: 2px solid var(--border-accent);
+            border-top-color: var(--accent-orange);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-tertiary);
+            font-size: 13px;
+        }
+
+        /* User Info Card */
         .user-info {
-            background: rgba(0, 212, 255, 0.08);
-            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
             padding: 20px;
-            margin-bottom: 30px;
-            border: 1px solid rgba(0, 212, 255, 0.15);
+            margin-bottom: 32px;
+            display: none;
         }
-        
+
         .user-info-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border-subtle);
         }
-        
+
         .user-info-row:last-child {
             border-bottom: none;
         }
-        
+
         .user-info-label {
-            color: #94a3b8;
             display: flex;
             align-items: center;
             gap: 10px;
+            color: var(--text-tertiary);
+            font-size: 13px;
+            font-weight: 500;
         }
-        
-        .user-info-value {
-            color: #fff;
-            font-weight: 600;
+
+        .user-info-label i {
+            width: 16px;
+            text-align: center;
+            font-size: 14px;
         }
-        
+
+        /* Badges */
         .discord-badge {
-            background: #5865F2;
+            background: var(--discord-brand);
             color: white;
-            padding: 4px 12px;
+            padding: 6px 14px;
             border-radius: 20px;
-            font-size: 0.9rem;
+            font-size: 13px;
+            font-weight: 500;
             display: inline-flex;
             align-items: center;
             gap: 6px;
         }
-        
+
         .product-badge {
-            background: linear-gradient(135deg, #00d4ff, #3b82f6);
+            background: linear-gradient(135deg, var(--accent-orange), var(--accent-coral));
             color: white;
-            padding: 6px 16px;
+            padding: 6px 14px;
             border-radius: 20px;
-            font-size: 0.95rem;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
         }
-        
-        .checkout-btn {
+
+        .verified-badge {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-green);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
             display: inline-flex;
             align-items: center;
-            justify-content: center;
-            gap: 10px;
+            gap: 6px;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        /* Checkout Button */
+        .checkout-btn {
+            display: none;
             width: 100%;
-            padding: 16px 32px;
-            background: linear-gradient(135deg, #10b981, #059669);
+            padding: 16px 24px;
+            background: linear-gradient(135deg, var(--accent-green), #059669);
             color: white;
             border: none;
             border-radius: 12px;
-            font-size: 1.1rem;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            text-decoration: none;
-            margin-bottom: 15px;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-family: inherit;
+            letter-spacing: -0.01em;
         }
-        
-        .checkout-btn:hover {
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+
+        .checkout-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 8px 24px rgba(16, 185, 129, 0.3),
+                0 0 40px rgba(16, 185, 129, 0.15);
         }
-        
+
+        .checkout-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
         .checkout-btn i {
-            font-size: 1.2rem;
+            font-size: 14px;
         }
-        
-        .cancel-btn {
-            display: inline-block;
-            color: #94a3b8;
+
+        /* Cancel Link */
+        .cancel-link {
+            display: block;
+            text-align: center;
+            margin-top: 16px;
+            color: var(--text-tertiary);
             text-decoration: none;
-            font-size: 0.9rem;
-            transition: color 0.3s ease;
+            font-size: 13px;
+            transition: color 0.2s ease;
         }
-        
-        .cancel-btn:hover {
+
+        .cancel-link:hover {
             color: #ef4444;
         }
-        
+
+        /* Security Note */
         .security-note {
-            margin-top: 30px;
-            padding: 15px;
-            background: rgba(16, 185, 129, 0.08);
-            border-radius: 12px;
-            border: 1px solid rgba(16, 185, 129, 0.15);
+            margin-top: 28px;
+            padding: 16px;
+            background: rgba(16, 185, 129, 0.04);
+            border: 1px solid rgba(16, 185, 129, 0.1);
+            border-radius: 10px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
         }
-        
+
+        .security-note i {
+            color: var(--accent-green);
+            font-size: 14px;
+            margin-top: 2px;
+        }
+
         .security-note p {
-            color: #94a3b8;
-            font-size: 0.85rem;
+            color: var(--text-tertiary);
+            font-size: 12px;
+            line-height: 1.5;
             margin: 0;
         }
-        
-        .security-note i {
-            color: #10b981;
-            margin-right: 8px;
-        }
-        
-        .loading-spinner {
+
+        /* Error State */
+        .error-container {
             display: none;
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(255, 255, 255, 0.1);
-            border-top-color: #00d4ff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
+            text-align: center;
+            padding: 32px 0;
         }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .error-message {
+
+        .error-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
             background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 12px;
-            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
             color: #ef4444;
-            display: none;
+            font-size: 24px;
         }
-        
-        .success-badge {
+
+        .error-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .error-message {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .retry-btn {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            background: rgba(16, 185, 129, 0.15);
-            color: #10b981;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            margin-top: 10px;
+            gap: 8px;
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-primary);
+            border: 1px solid var(--border-accent);
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .retry-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Success State (inline) */
+        .success-inline {
+            text-align: center;
+            padding: 32px 0;
+        }
+
+        .success-icon-inline {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-green), #059669);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 28px;
+            color: white;
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.3);
+        }
+
+        .success-title-inline {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .success-subtitle-inline {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        /* Responsive */
+        @media (max-width: 540px) {
+            .checkout-container {
+                padding: 40px 16px;
+            }
+            
+            .checkout-card {
+                padding: 32px 24px;
+                border-radius: 16px;
+            }
+            
+            .checkout-title {
+                font-size: 24px;
+            }
+            
+            .user-info-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
         }
     </style>
 </head>
-<body class="legal-page">
-    <!-- Background Effects -->
-    <div class="gradient-orb orb-1"></div>
-    <div class="gradient-orb orb-2"></div>
+<body>
+    <div class="ambient-glow"></div>
     
     <div class="checkout-container">
-        <a href="purchase.html" class="back-btn">
+        <a href="purchase.html" class="back-link">
             <i class="fas fa-arrow-left"></i> Back to Pricing
         </a>
         
@@ -220,16 +455,28 @@
             </div>
             
             <h1 class="checkout-title">Complete Your Purchase</h1>
-            <p class="checkout-subtitle">You're almost there! Review your order below.</p>
+            <p class="checkout-subtitle">Review your order details below</p>
             
-            <div class="loading-spinner" id="loadingSpinner"></div>
-            
-            <div class="error-message" id="errorMessage">
-                <i class="fas fa-exclamation-circle"></i>
-                <span id="errorText">An error occurred. Please try again.</span>
+            <!-- Loading State -->
+            <div class="loading-container" id="loadingState">
+                <div class="loading-spinner"></div>
+                <span class="loading-text">Loading your session...</span>
             </div>
             
-            <div class="user-info" id="userInfo" style="display: none;">
+            <!-- Error State -->
+            <div class="error-container" id="errorState">
+                <div class="error-icon">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <h3 class="error-title">Session Error</h3>
+                <p class="error-message" id="errorMessage">An error occurred. Please try again.</p>
+                <a href="purchase.html" class="retry-btn">
+                    <i class="fas fa-arrow-left"></i> Start Over
+                </a>
+            </div>
+            
+            <!-- User Info -->
+            <div class="user-info" id="userInfo">
                 <div class="user-info-row">
                     <span class="user-info-label">
                         <i class="fab fa-discord"></i> Discord Account
@@ -240,28 +487,29 @@
                 </div>
                 <div class="user-info-row">
                     <span class="user-info-label">
-                        <i class="fas fa-box"></i> Product
+                        <i class="fas fa-cube"></i> Product
                     </span>
                     <span class="product-badge" id="productName">Loading...</span>
                 </div>
                 <div class="user-info-row">
                     <span class="user-info-label">
-                        <i class="fas fa-server"></i> Server Joined
+                        <i class="fas fa-server"></i> Server Status
                     </span>
-                    <span class="success-badge">
-                        <i class="fas fa-check"></i> SwimHub Discord
+                    <span class="verified-badge">
+                        <i class="fas fa-check"></i> SwimHub Member
                     </span>
                 </div>
             </div>
             
-            <button class="checkout-btn" id="checkoutBtn" style="display: none;">
+            <button class="checkout-btn" id="checkoutBtn">
                 <i class="fas fa-lock"></i> Proceed to Secure Checkout
             </button>
             
-            <a href="purchase.html" class="cancel-btn">Cancel and go back</a>
+            <a href="purchase.html" class="cancel-link">Cancel and return</a>
             
             <div class="security-note">
-                <p><i class="fas fa-shield-alt"></i> Secure checkout powered by Polar. Your payment information is encrypted and protected.</p>
+                <i class="fas fa-shield-alt"></i>
+                <p>Secure checkout powered by Polar. Your payment details are encrypted and never stored on our servers.</p>
             </div>
         </div>
     </div>
@@ -272,32 +520,31 @@
             const sessionId = urlParams.get('session');
             const errorParam = urlParams.get('error');
             
-            const loadingSpinner = document.getElementById('loadingSpinner');
+            const loadingState = document.getElementById('loadingState');
+            const errorState = document.getElementById('errorState');
             const errorMessage = document.getElementById('errorMessage');
-            const errorText = document.getElementById('errorText');
             const userInfo = document.getElementById('userInfo');
             const checkoutBtn = document.getElementById('checkoutBtn');
             const discordUsername = document.getElementById('discordUsername');
             const productName = document.getElementById('productName');
             
+            function showError(message) {
+                loadingState.style.display = 'none';
+                errorState.style.display = 'block';
+                errorMessage.textContent = message;
+            }
+            
             if (errorParam) {
-                loadingSpinner.style.display = 'none';
-                errorMessage.style.display = 'block';
-                errorText.textContent = 'Authentication failed. Please try again.';
+                showError('Authentication failed. Please try again.');
                 return;
             }
             
             if (!sessionId) {
-                loadingSpinner.style.display = 'none';
-                errorMessage.style.display = 'block';
-                errorText.textContent = 'Invalid session. Please start the purchase process again.';
+                showError('Invalid session. Please start the purchase process again.');
                 return;
             }
             
-            loadingSpinner.style.display = 'block';
-            
             try {
-                // Fetch session info
                 const response = await fetch(`/api/session/${sessionId}`);
                 
                 if (!response.ok) {
@@ -306,14 +553,13 @@
                 
                 const data = await response.json();
                 
-                loadingSpinner.style.display = 'none';
+                loadingState.style.display = 'none';
                 userInfo.style.display = 'block';
                 checkoutBtn.style.display = 'flex';
                 
                 discordUsername.innerHTML = `<i class="fab fa-discord"></i> ${data.discordUsername}`;
                 productName.textContent = data.productName;
                 
-                // Handle checkout button click - open embedded checkout
                 checkoutBtn.addEventListener('click', async function() {
                     checkoutBtn.disabled = true;
                     checkoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Opening Checkout...';
@@ -323,48 +569,41 @@
                         const checkoutData = await checkoutResponse.json();
                         
                         if (checkoutData.checkoutUrl) {
-                            // Use Polar embedded checkout
                             if (typeof PolarEmbedCheckout !== 'undefined' && checkoutData.embedEnabled) {
                                 try {
                                     const checkout = await PolarEmbedCheckout.create(
                                         checkoutData.checkoutUrl,
-                                        'dark' // Use dark theme to match site
+                                        'dark'
                                     );
                                     
-                                    // Reset button state
                                     checkoutBtn.disabled = false;
                                     checkoutBtn.innerHTML = '<i class="fas fa-lock"></i> Proceed to Secure Checkout';
                                     
-                                    // Listen for successful payment
                                     checkout.addEventListener('success', async (event) => {
                                         console.log('Payment successful!', event.detail);
                                         
-                                        // Extract checkout_id from Polar success event if available
                                         const polarCheckoutId = event.detail?.checkoutId || 
                                                                event.detail?.checkout_id || 
-                                                               event.detail?.id ||
-                                                               '';
-                                        console.log('Polar checkout ID:', polarCheckoutId);
+                                                               event.detail?.id || '';
                                         
-                                        // Prevent default redirect behavior
                                         event.preventDefault();
                                         
-                                        // Show success state
+                                        // Show inline success state
                                         document.getElementById('checkoutCard').innerHTML = `
-                                            <div class="checkout-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
-                                                <i class="fas fa-check"></i>
+                                            <div class="success-inline">
+                                                <div class="success-icon-inline">
+                                                    <i class="fas fa-check"></i>
+                                                </div>
+                                                <h2 class="success-title-inline">Payment Successful!</h2>
+                                                <p class="success-subtitle-inline">Your license key is being delivered to your Discord DMs...</p>
+                                                <div class="loading-spinner" style="margin: 24px auto;"></div>
+                                                <p style="color: var(--text-tertiary); font-size: 13px;">Check your Discord messages from SwimHub Bot</p>
                                             </div>
-                                            <h1 class="checkout-title">Payment Successful!</h1>
-                                            <p class="checkout-subtitle">Your license key is being delivered to your Discord DMs...</p>
-                                            <div class="loading-spinner" style="display: block;"></div>
-                                            <p style="color: #94a3b8; margin-top: 20px;">Check your Discord messages from SwimHub Bot</p>
                                         `;
                                         
-                                        // Poll for license delivery
                                         let attempts = 0;
-                                        const maxAttempts = 30; // 30 seconds max
+                                        const maxAttempts = 30;
                                         
-                                        // Build success URL with both session and checkout_id
                                         const successUrl = polarCheckoutId 
                                             ? `/success.html?session=${sessionId}&checkout_id=${polarCheckoutId}`
                                             : `/success.html?session=${sessionId}`;
@@ -376,12 +615,10 @@
                                                 const statusData = await statusRes.json();
                                                 
                                                 if (statusData.status === 'completed') {
-                                                    // Redirect to success page
                                                     window.location.href = successUrl;
                                                 } else if (attempts < maxAttempts) {
                                                     setTimeout(pollStatus, 1000);
                                                 } else {
-                                                    // Redirect anyway after timeout
                                                     window.location.href = successUrl;
                                                 }
                                             } catch (err) {
@@ -394,14 +631,11 @@
                                         pollStatus();
                                     });
                                     
-                                    // Listen for checkout close
                                     checkout.addEventListener('close', () => {
-                                        console.log('Checkout closed');
                                         checkoutBtn.disabled = false;
                                         checkoutBtn.innerHTML = '<i class="fas fa-lock"></i> Proceed to Secure Checkout';
                                     });
                                     
-                                    // Listen for errors
                                     checkout.addEventListener('error', (event) => {
                                         console.error('Checkout error:', event);
                                         checkoutBtn.disabled = false;
@@ -409,11 +643,10 @@
                                     });
                                     
                                 } catch (embedError) {
-                                    console.error('Embed error, falling back to redirect:', embedError);
+                                    console.error('Embed error:', embedError);
                                     window.location.href = checkoutData.checkoutUrl;
                                 }
                             } else {
-                                // Fallback: redirect to checkout URL
                                 window.location.href = checkoutData.checkoutUrl;
                             }
                         } else {
@@ -427,9 +660,7 @@
                 });
                 
             } catch (error) {
-                loadingSpinner.style.display = 'none';
-                errorMessage.style.display = 'block';
-                errorText.textContent = error.message || 'Failed to load session data.';
+                showError(error.message || 'Failed to load session data.');
             }
         });
     </script>
