@@ -33,6 +33,9 @@ const PORT = process.env.PORT || 3000;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const LOW_STOCK_THRESHOLD = parseInt(process.env.LOW_STOCK_THRESHOLD) || 10;
 
+// Support both ADMIN_DISCORD_ID and ADMIN_USER_ID env var names
+const ADMIN_DISCORD_ID = ADMIN_DISCORD_ID || process.env.ADMIN_USER_ID || '';
+
 // ---------- CONSTANTS ----------
 const PRODUCTS = {
   'regular-monthly': { name: 'SwimHub Regular Monthly', duration: 30, tier: 'regular' },
@@ -495,9 +498,9 @@ async function checkLowStockAndNotify() {
     
     if (parseInt(stats.available) <= LOW_STOCK_THRESHOLD && parseInt(stats.available) > 0) {
       // Send notification to admin
-      if (discordClient && process.env.ADMIN_DISCORD_ID) {
+      if (discordClient && ADMIN_DISCORD_ID) {
         try {
-          const admin = await discordClient.users.fetch(process.env.ADMIN_DISCORD_ID);
+          const admin = await discordClient.users.fetch(ADMIN_DISCORD_ID);
           const embed = new EmbedBuilder()
             .setColor('#f59e0b')
             .setTitle('⚠️ Low License Stock Alert')
@@ -518,9 +521,9 @@ async function checkLowStockAndNotify() {
       }
     } else if (parseInt(stats.available) === 0) {
       // Critical: Out of stock
-      if (discordClient && process.env.ADMIN_DISCORD_ID) {
+      if (discordClient && ADMIN_DISCORD_ID) {
         try {
-          const admin = await discordClient.users.fetch(process.env.ADMIN_DISCORD_ID);
+          const admin = await discordClient.users.fetch(ADMIN_DISCORD_ID);
           const embed = new EmbedBuilder()
             .setColor('#ef4444')
             .setTitle('🚨 OUT OF STOCK - CRITICAL')
@@ -573,10 +576,10 @@ async function sendLicenseDM(discordId, licenseKey, product) {
 }
 
 async function sendAdminNotification(customerInfo, licenseKey, product) {
-  if (!discordClient || !process.env.ADMIN_DISCORD_ID) return;
+  if (!discordClient || !ADMIN_DISCORD_ID) return;
 
   try {
-    const admin = await discordClient.users.fetch(process.env.ADMIN_DISCORD_ID);
+    const admin = await discordClient.users.fetch(ADMIN_DISCORD_ID);
     const purchaseEmbed = new EmbedBuilder()
       .setColor('#667eea')
       .setTitle('📦 New Purchase Notification')
@@ -760,16 +763,27 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
     console.log('=== POLAR WEBHOOK RECEIVED ===');
     console.log('Event Type:', req.body?.type);
     
-    const signatureHeader = req.headers['webhook-signature'] || req.headers['polar-signature'] || '';
-    const webhookSecret = (process.env.POLAR_WEBHOOK_SECRET || '').trim();
+    // Standard Webhooks headers (used by Polar)
+    const webhookId = req.headers['webhook-id'] || '';
+    const webhookTimestamp = req.headers['webhook-timestamp'] || '';
+    const webhookSignature = req.headers['webhook-signature'] || '';
+    
+    // Also check legacy header names
+    const signatureHeader = webhookSignature || req.headers['polar-signature'] || '';
+    
+    const webhookSecretRaw = (process.env.POLAR_WEBHOOK_SECRET || '').trim();
     const skipSig = process.env.POLAR_SKIP_SIGNATURE === 'true';
+
+    console.log('📋 Webhook Headers:');
+    console.log('   webhook-id:', webhookId);
+    console.log('   webhook-timestamp:', webhookTimestamp);
+    console.log('   webhook-signature:', signatureHeader ? signatureHeader.substring(0, 50) + '...' : '(none)');
 
     let signatureValid = skipSig;
 
-    // Verify signature using rawBody
-    if (!signatureValid && webhookSecret && signatureHeader) {
+    // Verify signature using Standard Webhooks spec
+    if (!signatureValid && webhookSecretRaw && signatureHeader) {
       console.log('🔐 Verifying webhook signature...');
-      console.log('   Signature header:', signatureHeader.substring(0, 50) + '...');
       
       if (!req.rawBody) {
         console.error('❌ rawBody not available for signature verification');
@@ -778,82 +792,93 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
       
       const rawBodyString = req.rawBody.toString('utf8');
 
-      // Parse Polar signature format: "t=timestamp,v1=signature" or just the signature
-      let timestamp = '';
-      let signatureValue = '';
+      // Extract the actual secret (remove prefix if present)
+      // Polar uses format: polar_whs_BASE64SECRET or whsec_BASE64SECRET
+      let secretBase64 = webhookSecretRaw;
+      if (webhookSecretRaw.startsWith('polar_whs_')) {
+        secretBase64 = webhookSecretRaw.substring(10); // Remove 'polar_whs_'
+      } else if (webhookSecretRaw.startsWith('whsec_')) {
+        secretBase64 = webhookSecretRaw.substring(6); // Remove 'whsec_'
+      }
       
-      if (signatureHeader.includes('t=') && signatureHeader.includes('v1=')) {
-        // Format: t=1234567890,v1=abc123...
-        const parts = signatureHeader.split(',');
-        for (const part of parts) {
-          if (part.startsWith('t=')) {
-            timestamp = part.substring(2);
-          } else if (part.startsWith('v1=')) {
-            signatureValue = part.substring(3);
-          }
-        }
-      } else if (signatureHeader.includes(',')) {
-        // Format: timestamp,signature
-        const parts = signatureHeader.split(',');
-        timestamp = parts[0].trim();
-        signatureValue = parts[1].trim();
-      } else {
-        // Just the signature
-        signatureValue = signatureHeader.trim();
-        timestamp = req.headers['webhook-timestamp'] || req.headers['polar-timestamp'] || '';
+      // Decode the base64 secret
+      let secretBytes;
+      try {
+        secretBytes = Buffer.from(secretBase64, 'base64');
+        console.log('   Secret decoded successfully, length:', secretBytes.length, 'bytes');
+      } catch (e) {
+        console.error('   Failed to decode secret as base64, using raw');
+        secretBytes = Buffer.from(webhookSecretRaw);
       }
 
-      console.log('   Parsed timestamp:', timestamp);
-      console.log('   Signature value:', signatureValue.substring(0, 20) + '...');
-
-      // Try multiple signature verification methods
-      const candidates = [
-        // Polar standard: timestamp.payload with hex output
-        { label: 'ts.payload hex', payload: `${timestamp}.${rawBodyString}`, encoding: 'hex' },
-        // Polar standard: timestamp.payload with base64 output  
-        { label: 'ts.payload b64', payload: `${timestamp}.${rawBodyString}`, encoding: 'base64' },
-        // Just payload with hex
-        { label: 'payload hex', payload: rawBodyString, encoding: 'hex' },
-        // Just payload with base64
-        { label: 'payload b64', payload: rawBodyString, encoding: 'base64' },
-      ];
-
-      for (const c of candidates) {
-        const computed = crypto.createHmac('sha256', webhookSecret).update(c.payload).digest(c.encoding);
-        if (computed === signatureValue) {
+      // Standard Webhooks format: msg_id.timestamp.payload
+      // Per spec: signature content is `${webhook-id}.${webhook-timestamp}.${payload}`
+      const signaturePayload = `${webhookId}.${webhookTimestamp}.${rawBodyString}`;
+      
+      // Parse signatures from header (format: "v1,signature v1,signature2")
+      // Signatures are space-separated, each is "version,base64sig"
+      const signatures = signatureHeader.split(' ');
+      
+      for (const sig of signatures) {
+        // Parse "v1,BASE64SIGNATURE" format
+        const [version, sigValue] = sig.split(',');
+        
+        if (!sigValue) {
+          console.log('   Skipping malformed signature:', sig);
+          continue;
+        }
+        
+        console.log('   Checking signature version:', version);
+        
+        // Compute HMAC-SHA256
+        const computed = crypto
+          .createHmac('sha256', secretBytes)
+          .update(signaturePayload)
+          .digest('base64');
+        
+        console.log('   Computed signature:', computed.substring(0, 30) + '...');
+        console.log('   Received signature:', sigValue.substring(0, 30) + '...');
+        
+        // Use timing-safe comparison
+        try {
+          const computedBuffer = Buffer.from(computed);
+          const receivedBuffer = Buffer.from(sigValue);
+          
+          if (computedBuffer.length === receivedBuffer.length && 
+              crypto.timingSafeEqual(computedBuffer, receivedBuffer)) {
+            signatureValid = true;
+            console.log('✅ Signature verified successfully!');
+            break;
+          }
+        } catch (e) {
+          // Length mismatch, continue to next signature
+        }
+        
+        // Also try without base64 decode of secret (some implementations)
+        const computedAlt = crypto
+          .createHmac('sha256', webhookSecretRaw)
+          .update(signaturePayload)
+          .digest('base64');
+        
+        if (computedAlt === sigValue) {
           signatureValid = true;
-          console.log(`✅ Signature verified using: ${c.label}`);
+          console.log('✅ Signature verified (using raw secret)!');
           break;
         }
       }
-      
-      if (!signatureValid) {
-        console.log('⚠️ Signature mismatch - trying with webhook ID from body...');
-        // Some Polar versions use webhook_id in the signature
-        const webhookId = req.body?.webhook_id || req.body?.id || '';
-        if (webhookId) {
-          const payload = `${webhookId}.${rawBodyString}`;
-          const computed = crypto.createHmac('sha256', webhookSecret).update(payload).digest('hex');
-          if (computed === signatureValue) {
-            signatureValid = true;
-            console.log('✅ Signature verified using webhook_id.payload');
-          }
-        }
-      }
     }
 
-    // If still invalid but we have the secret, log details for debugging
-    if (!signatureValid && webhookSecret) {
-      console.error('❌ Invalid Polar webhook signature');
-      console.error('   To bypass signature verification, set POLAR_SKIP_SIGNATURE=true');
-      // Don't reject - accept the webhook but log the issue
-      // This is safer than rejecting valid webhooks due to signature format changes
-      console.log('⚠️ Accepting webhook despite signature mismatch (for debugging)');
-      signatureValid = true; // Accept anyway to not lose sales
+    // If still invalid, log details but accept to not lose sales
+    if (!signatureValid && webhookSecretRaw) {
+      console.error('❌ Webhook signature verification failed');
+      console.error('   Set POLAR_SKIP_SIGNATURE=true to bypass (not recommended for production)');
+      // Accept anyway to not lose sales - log extensively for debugging
+      console.log('⚠️ Accepting webhook despite signature mismatch (to avoid losing sales)');
+      signatureValid = true;
     }
 
     const event = req.body;
-    const eventId = event.id || `${Date.now()}-${Math.random()}`;
+    const eventId = event.id || webhookId || `${Date.now()}-${Math.random()}`;
 
     if (processedWebhooks.has(eventId)) {
       console.log('⚠️ Duplicate webhook ignored:', eventId);
@@ -975,9 +1000,9 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
             );
 
             // Alert admin about out of stock
-            if (discordClient && process.env.ADMIN_DISCORD_ID) {
+            if (discordClient && ADMIN_DISCORD_ID) {
               try {
-                const admin = await discordClient.users.fetch(process.env.ADMIN_DISCORD_ID);
+                const admin = await discordClient.users.fetch(ADMIN_DISCORD_ID);
                 const embed = new EmbedBuilder()
                   .setColor('#ef4444')
                   .setTitle('🚨 OUT OF STOCK - SALE PENDING!')
@@ -1026,9 +1051,9 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
         await checkLowStockAndNotify();
 
         // Send Discord notification to admin
-        if (discordClient && process.env.ADMIN_DISCORD_ID) {
+        if (discordClient && ADMIN_DISCORD_ID) {
           try {
-            const admin = await discordClient.users.fetch(process.env.ADMIN_DISCORD_ID);
+            const admin = await discordClient.users.fetch(ADMIN_DISCORD_ID);
             const embed = new EmbedBuilder()
               .setColor('#10b981')
               .setTitle('💰 New Polar Sale!')
@@ -1225,9 +1250,9 @@ app.post('/api/claim-by-email', pollingLimiter, async (req, res) => {
       if (!availableKey) {
         console.error(`❌ No available keys for product: ${session.product}`);
         // Notify admin
-        if (discordClient && process.env.ADMIN_DISCORD_ID) {
+        if (discordClient && ADMIN_DISCORD_ID) {
           try {
-            const admin = await discordClient.users.fetch(process.env.ADMIN_DISCORD_ID);
+            const admin = await discordClient.users.fetch(ADMIN_DISCORD_ID);
             const embed = new EmbedBuilder()
               .setColor('#ef4444')
               .setTitle('🚨 OUT OF STOCK - Customer Waiting!')
