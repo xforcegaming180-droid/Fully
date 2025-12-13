@@ -887,24 +887,25 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
     const event = req.body;
     const eventId = event.id || webhookId || `${Date.now()}-${Math.random()}`;
 
-    if (processedWebhooks.has(eventId)) {
-      console.log('⚠️ Duplicate webhook ignored:', eventId);
-      return res.status(200).json({ received: true, duplicate: true });
-    }
-    processedWebhooks.add(eventId);
-
     // Handle successful checkout/order events
     const successEvents = ['checkout.completed', 'order.created', 'checkout.updated', 'order.paid'];
 
     if (successEvents.includes(event.type)) {
-      console.log('📦 Processing successful payment event...');
+      console.log('📦 Processing successful payment event:', event.type);
       
       // Parse Polar webhook payload
       // Polar.sh sends data in event.data for most events
       const data = event.data || event;
       
-      // Extract checkout/order ID
+      // Extract checkout/order ID - this is our PRIMARY deduplication key
       const checkout_id = data.id || data.checkout_id || data.order_id || eventId;
+      
+      // Check if this checkout was already processed (deduplication by checkout_id)
+      if (processedWebhooks.has(checkout_id)) {
+        console.log('⚠️ Duplicate checkout ignored (already processed):', checkout_id);
+        return res.status(200).json({ received: true, duplicate: true });
+      }
+      processedWebhooks.add(checkout_id);
       
       // Extract customer info
       const customer = data.customer || data.user || data.buyer || {};
@@ -981,27 +982,9 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
           [customer_email, product_type]
         );
 
-        // If no specific product type key, try universal 'swimhub' keys
+        // If no specific product type key, try ANY available key as fallback
         if (keyResult.rows.length === 0) {
-          keyResult = await client.query(
-            `UPDATE license_stock 
-             SET status = 'assigned', claimed = TRUE, claimed_at = now(), 
-                 customer_email = $1, updated_at = now()
-             WHERE id = (
-               SELECT id FROM license_stock 
-               WHERE status = 'available' AND claimed = FALSE 
-               AND product_type = 'swimhub'
-               ORDER BY created_at ASC 
-               LIMIT 1 
-               FOR UPDATE SKIP LOCKED
-             ) 
-             RETURNING license_key, product_type`,
-            [customer_email]
-          );
-        }
-
-        // Last resort: try ANY available key
-        if (keyResult.rows.length === 0) {
+          console.log('⚠️ No keys found for specific type, trying any available key...');
           keyResult = await client.query(
             `UPDATE license_stock 
              SET status = 'assigned', claimed = TRUE, claimed_at = now(), 
@@ -1750,11 +1733,10 @@ const commands = [
         .setDescription('Product tier for these keys')
         .setRequired(true)
         .addChoices(
-          { name: 'SwimHub (Universal)', value: 'swimhub' },
-          { name: 'Regular Monthly', value: 'regular-monthly' },
-          { name: 'Regular Lifetime', value: 'regular-lifetime' },
-          { name: 'Master Monthly', value: 'master-monthly' },
-          { name: 'Master Lifetime', value: 'master-lifetime' }
+          { name: 'Minion Basic (Regular Monthly)', value: 'regular-monthly' },
+          { name: 'Minion Intermediate (Regular Lifetime)', value: 'regular-lifetime' },
+          { name: 'Minion Advanced (Master Monthly)', value: 'master-monthly' },
+          { name: 'Minion Full Access (Master Lifetime)', value: 'master-lifetime' }
         ))
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
