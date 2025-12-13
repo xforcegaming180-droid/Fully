@@ -7,27 +7,36 @@
     <meta name="theme-color" content="#0a0a0b">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
+        @font-face {
+            font-family: 'SF Pro Display';
+            src: local('SF Pro Display'), local('SFProDisplay-Regular');
+        }
+
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            --bg: #0a0a0b;
-            --bg-elevated: #111113;
-            --bg-card: rgba(17, 17, 19, 0.8);
-            --text-primary: #fafafa;
-            --text-secondary: #888;
-            --text-muted: #555;
-            --accent: #2563eb;
-            --accent-hover: #3b82f6;
-            --success: #10b981;
-            --error: #ef4444;
+            --bg: #000000;
+            --bg-elevated: #0a0a0a;
+            --bg-card: rgba(18, 18, 18, 0.85);
+            --bg-input: rgba(255, 255, 255, 0.04);
+            --text-primary: #f5f5f7;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-tertiary: rgba(255, 255, 255, 0.4);
+            --accent: #0a84ff;
+            --accent-hover: #409cff;
+            --success: #30d158;
+            --success-glow: rgba(48, 209, 88, 0.3);
+            --warning: #ffd60a;
+            --error: #ff453a;
             --border: rgba(255, 255, 255, 0.08);
+            --border-subtle: rgba(255, 255, 255, 0.04);
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--bg);
             color: var(--text-primary);
             min-height: 100vh;
@@ -36,458 +45,711 @@
             justify-content: center;
             padding: 24px;
             -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow: hidden;
         }
 
+        /* Ambient gradient background */
         .ambient {
             position: fixed;
             inset: 0;
-            background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(16, 185, 129, 0.08), transparent);
             pointer-events: none;
+            z-index: 0;
+        }
+
+        .ambient::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150%;
+            height: 100%;
+            background: radial-gradient(ellipse 50% 50% at 50% 0%, rgba(48, 209, 88, 0.12), transparent 70%);
+            animation: pulse 8s ease-in-out infinite;
+        }
+
+        .ambient::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120%;
+            height: 60%;
+            background: radial-gradient(ellipse 60% 40% at 50% 100%, rgba(10, 132, 255, 0.06), transparent 60%);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Noise texture overlay */
+        .noise {
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.02;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .container {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            max-width: 440px;
         }
 
         .card {
-            position: relative;
-            z-index: 1;
-            max-width: 420px;
-            width: 100%;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 40px 32px;
-            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 48px 40px;
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            box-shadow: 
+                0 0 0 0.5px rgba(255, 255, 255, 0.05) inset,
+                0 32px 64px -12px rgba(0, 0, 0, 0.5);
             text-align: center;
-            animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: cardIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes cardIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(24px) scale(0.98);
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1);
+            }
         }
 
-        .icon {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, var(--success), #059669);
+        /* Success Icon */
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 28px;
+            position: relative;
+        }
+
+        .success-icon .circle {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--success), #28a745);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 24px;
+            box-shadow: 
+                0 0 40px var(--success-glow),
+                0 8px 32px rgba(48, 209, 88, 0.25);
+            animation: iconPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+        }
+
+        @keyframes iconPop {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+        }
+
+        .success-icon .checkmark {
+            width: 36px;
+            height: 36px;
+            stroke: white;
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+        }
+
+        .success-icon .checkmark path {
+            stroke-dasharray: 48;
+            stroke-dashoffset: 48;
+            animation: drawCheck 0.4s ease-out 0.5s forwards;
+        }
+
+        @keyframes drawCheck {
+            to { stroke-dashoffset: 0; }
+        }
+
+        /* Loading Icon */
+        .loading-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 28px;
+            position: relative;
+        }
+
+        .loading-icon .spinner {
+            width: 100%;
+            height: 100%;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-icon .inner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: var(--bg-elevated);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading-icon .inner i {
             font-size: 24px;
-            color: white;
+            color: var(--accent);
+            animation: pulse 2s ease-in-out infinite;
         }
 
         h1 {
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            margin-bottom: 8px;
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: -0.03em;
+            margin-bottom: 10px;
+            background: linear-gradient(180deg, var(--text-primary) 0%, rgba(245, 245, 247, 0.8) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .subtitle {
+            font-size: 16px;
             color: var(--text-secondary);
-            font-size: 15px;
-            margin-bottom: 28px;
-            line-height: 1.5;
+            line-height: 1.6;
+            margin-bottom: 32px;
+            font-weight: 400;
         }
 
-        .form-group {
-            margin-bottom: 16px;
-            text-align: left;
+        /* License Key Display */
+        .license-container {
+            display: none;
+            animation: fadeSlide 0.5s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .form-label {
+        .license-container.show {
             display: block;
-            color: var(--text-secondary);
-            font-size: 13px;
-            font-weight: 500;
-            margin-bottom: 8px;
         }
 
-        .form-input {
-            width: 100%;
-            padding: 14px 16px;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            color: var(--text-primary);
-            font-size: 15px;
-            font-family: inherit;
-            transition: border-color 0.2s;
+        @keyframes fadeSlide {
+            from { 
+                opacity: 0; 
+                transform: translateY(12px);
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0);
+            }
         }
 
-        .form-input:focus {
-            outline: none;
-            border-color: var(--accent);
-        }
-
-        .form-input::placeholder {
-            color: var(--text-muted);
-        }
-
-        .btn {
-            width: 100%;
-            padding: 14px 24px;
-            border-radius: 10px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: none;
-            font-family: inherit;
+        .license-label {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            background: var(--accent-hover);
-            transform: translateY(-1px);
-        }
-
-        .btn-primary:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .hint {
-            color: var(--text-muted);
-            font-size: 12px;
-            margin-top: 12px;
-        }
-
-        .message {
-            padding: 12px 16px;
-            border-radius: 10px;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--success);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
             margin-bottom: 16px;
-            display: none;
         }
-
-        .message.error {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            color: var(--error);
-        }
-
-        .message.info {
-            background: rgba(37, 99, 235, 0.1);
-            border: 1px solid rgba(37, 99, 235, 0.2);
-            color: var(--accent);
-        }
-
-        .message.show { display: block; }
 
         .license-box {
-            background: rgba(16, 185, 129, 0.08);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            border-radius: 12px;
+            background: rgba(48, 209, 88, 0.06);
+            border: 1px solid rgba(48, 209, 88, 0.15);
+            border-radius: 16px;
             padding: 20px;
             margin-bottom: 20px;
-            display: none;
-        }
-
-        .license-box.show {
-            display: block;
-            animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .license-label {
-            color: var(--success);
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 12px;
         }
 
         .license-key {
-            background: var(--bg);
-            border: 1px solid rgba(16, 185, 129, 0.15);
-            border-radius: 8px;
-            padding: 14px;
-            font-family: 'SF Mono', Consolas, monospace;
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--success);
+            font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+            font-size: 17px;
+            font-weight: 500;
+            color: var(--text-primary);
+            letter-spacing: 0.02em;
             word-break: break-all;
-            margin-bottom: 12px;
+            line-height: 1.5;
+            margin-bottom: 16px;
+            user-select: all;
         }
 
         .copy-btn {
-            background: var(--success);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 18px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            justify-content: center;
+            gap: 8px;
+            background: var(--success);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .copy-btn:hover {
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(48, 209, 88, 0.3);
         }
 
+        .copy-btn:active {
+            transform: translateY(0);
+        }
+
+        .copy-btn.copied {
+            background: #fff;
+            color: var(--success);
+        }
+
+        /* Status Messages */
+        .status-container {
+            display: none;
+        }
+
+        .status-container.show {
+            display: block;
+        }
+
+        .status-text {
+            font-size: 15px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .status-dots {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .status-dots span {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: bounce 1.4s ease-in-out infinite both;
+        }
+
+        .status-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .status-dots span:nth-child(2) { animation-delay: -0.16s; }
+        .status-dots span:nth-child(3) { animation-delay: 0s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Error State */
+        .error-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 28px;
+            background: linear-gradient(135deg, var(--error), #d32f2f);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 32px rgba(255, 69, 58, 0.25);
+        }
+
+        .error-icon i {
+            font-size: 32px;
+            color: white;
+        }
+
+        /* Divider */
         .divider {
             display: flex;
             align-items: center;
-            margin: 20px 0;
-            color: var(--text-muted);
+            margin: 28px 0;
+            color: var(--text-tertiary);
             font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
         }
 
         .divider::before, .divider::after {
             content: '';
             flex: 1;
             height: 1px;
-            background: var(--border);
+            background: linear-gradient(90deg, transparent, var(--border), transparent);
         }
 
-        .divider span { padding: 0 12px; }
+        .divider span { 
+            padding: 0 16px;
+        }
 
-        .links {
+        /* Action Links */
+        .actions {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             justify-content: center;
         }
 
-        .link {
+        .action-link {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 10px 18px;
-            background: var(--bg-elevated);
+            gap: 8px;
+            padding: 12px 20px;
+            background: var(--bg-input);
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: 12px;
             color: var(--text-secondary);
             text-decoration: none;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 500;
             transition: all 0.2s;
         }
 
-        .link:hover {
-            border-color: rgba(255, 255, 255, 0.15);
+        .action-link:hover {
+            background: rgba(255, 255, 255, 0.08);
             color: var(--text-primary);
+            border-color: rgba(255, 255, 255, 0.12);
+            transform: translateY(-1px);
+        }
+
+        .action-link i {
+            font-size: 16px;
+        }
+
+        /* Retry Button */
+        .retry-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 14px 28px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 16px;
+        }
+
+        .retry-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(10, 132, 255, 0.3);
+        }
+
+        /* Footer text */
+        .footer-text {
+            margin-top: 24px;
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        .footer-text a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .footer-text a:hover {
+            text-decoration: underline;
+        }
+
+        /* Discord DM notice */
+        .dm-notice {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: rgba(88, 101, 242, 0.1);
+            border: 1px solid rgba(88, 101, 242, 0.2);
+            border-radius: 12px;
+            padding: 14px 20px;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #8b9dff;
+        }
+
+        .dm-notice i {
+            font-size: 18px;
+            color: #5865f2;
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 480px) {
+            .card {
+                padding: 36px 24px;
+                border-radius: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .license-key {
+                font-size: 14px;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .action-link {
+                justify-content: center;
+            }
         }
     </style>
 </head>
 <body>
     <div class="ambient"></div>
-    
-    <div class="card">
-        <div class="icon">
-            <i class="fas fa-check"></i>
-        </div>
-        
-        <h1>Payment Complete!</h1>
-        <p class="subtitle">Enter the email you used during checkout to claim your license key.</p>
+    <div class="noise"></div>
 
-        <div class="message error" id="errorMsg">
-            <i class="fas fa-exclamation-circle"></i>
-            <span id="errorText"></span>
-        </div>
-
-        <div class="message info" id="infoMsg">
-            <i class="fas fa-info-circle"></i>
-            <span id="infoText"></span>
-        </div>
-
-        <div id="claimForm">
-            <div class="form-group">
-                <label class="form-label">Email Address</label>
-                <input type="email" class="form-input" id="emailInput" placeholder="your@email.com" autocomplete="email">
+    <div class="container">
+        <div class="card">
+            <!-- Loading State -->
+            <div id="loadingState" class="status-container show">
+                <div class="loading-icon">
+                    <div class="spinner"></div>
+                    <div class="inner">
+                        <i class="fas fa-key"></i>
+                    </div>
+                </div>
+                <h1>Processing Payment</h1>
+                <p class="subtitle">Please wait while we prepare your license key...</p>
+                <div class="status-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+                <div class="dm-notice">
+                    <i class="fab fa-discord"></i>
+                    <span>Your key will also be sent to your Discord DMs</span>
+                </div>
             </div>
-            <button class="btn btn-primary" id="claimBtn">
-                <i class="fas fa-key"></i> Claim License Key
-            </button>
-            <p class="hint">Use the same email you entered during Polar checkout</p>
-        </div>
 
-        <div class="license-box" id="licenseBox">
-            <div class="license-label">🎉 Your License Key</div>
-            <div class="license-key" id="licenseKey"></div>
-            <button class="copy-btn" id="copyBtn">
-                <i class="fas fa-copy"></i> Copy
-            </button>
-        </div>
+            <!-- Success State -->
+            <div id="successState" class="status-container">
+                <div class="success-icon">
+                    <div class="circle">
+                        <svg class="checkmark" viewBox="0 0 36 36">
+                            <path d="M7 18l8 8L29 10"/>
+                        </svg>
+                    </div>
+                </div>
+                <h1>Payment Successful!</h1>
+                <p class="subtitle">Your license key is ready. Copy it and enjoy SwimHub!</p>
+                
+                <div class="license-container show">
+                    <div class="license-label">
+                        <i class="fas fa-shield-check"></i>
+                        Your License Key
+                    </div>
+                    <div class="license-box">
+                        <div class="license-key" id="licenseKey">-</div>
+                        <button class="copy-btn" id="copyBtn">
+                            <i class="fas fa-copy"></i>
+                            Copy to Clipboard
+                        </button>
+                    </div>
+                </div>
 
-        <div class="divider"><span>or</span></div>
+                <div class="dm-notice">
+                    <i class="fab fa-discord"></i>
+                    <span>Also sent to your Discord DMs</span>
+                </div>
 
-        <div class="links">
-            <a href="https://dsc.gg/swimhub" target="_blank" class="link">
-                <i class="fab fa-discord"></i> Support
-            </a>
-            <a href="/" class="link">
-                <i class="fas fa-home"></i> Home
-            </a>
+                <div class="divider"><span>Next Steps</span></div>
+
+                <div class="actions">
+                    <a href="https://dsc.gg/swimhub" target="_blank" class="action-link">
+                        <i class="fab fa-discord"></i>
+                        Join Discord
+                    </a>
+                    <a href="/" class="action-link">
+                        <i class="fas fa-home"></i>
+                        Go Home
+                    </a>
+                </div>
+
+                <p class="footer-text">
+                    Need help? <a href="https://dsc.gg/swimhub">Contact Support</a>
+                </p>
+            </div>
+
+            <!-- Error State -->
+            <div id="errorState" class="status-container">
+                <div class="error-icon">
+                    <i class="fas fa-exclamation"></i>
+                </div>
+                <h1>Something Went Wrong</h1>
+                <p class="subtitle" id="errorMessage">We couldn't find your license key. Please contact support.</p>
+                
+                <button class="retry-btn" id="retryBtn">
+                    <i class="fas fa-redo"></i>
+                    Try Again
+                </button>
+
+                <div class="divider"><span>Or</span></div>
+
+                <div class="actions">
+                    <a href="https://dsc.gg/swimhub" target="_blank" class="action-link">
+                        <i class="fab fa-discord"></i>
+                        Contact Support
+                    </a>
+                    <a href="/" class="action-link">
+                        <i class="fas fa-home"></i>
+                        Go Home
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        const emailInput = document.getElementById('emailInput');
-        const claimBtn = document.getElementById('claimBtn');
-        const claimForm = document.getElementById('claimForm');
-        const licenseBox = document.getElementById('licenseBox');
-        const licenseKey = document.getElementById('licenseKey');
+        // DOM Elements
+        const loadingState = document.getElementById('loadingState');
+        const successState = document.getElementById('successState');
+        const errorState = document.getElementById('errorState');
+        const licenseKeyEl = document.getElementById('licenseKey');
         const copyBtn = document.getElementById('copyBtn');
-        const errorMsg = document.getElementById('errorMsg');
-        const errorText = document.getElementById('errorText');
-        const infoMsg = document.getElementById('infoMsg');
-        const infoText = document.getElementById('infoText');
+        const retryBtn = document.getElementById('retryBtn');
+        const errorMessage = document.getElementById('errorMessage');
 
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const sessionId = urlParams.get('session');
         const checkoutId = urlParams.get('checkout_id') || urlParams.get('checkoutId');
 
-        // On page load: try to auto-fetch session info and pre-fill email
-        document.addEventListener('DOMContentLoaded', async () => {
-            // First, try checkout_id polling (if Polar redirected with checkout_id)
-            if (checkoutId) {
-                showInfo('Checking your payment status...');
-                try {
-                    const res = await fetch(`/api/claim-key?checkout_id=${encodeURIComponent(checkoutId)}`);
-                    const data = await res.json();
-                    if (data.status === 'ready' && data.key) {
-                        showLicense(data.key);
-                        return;
-                    }
-                } catch (err) {
-                    console.log('Checkout ID lookup failed, falling back to email');
-                }
-            }
+        // Configuration
+        const MAX_ATTEMPTS = 60; // 60 seconds max polling
+        const POLL_INTERVAL = 1000; // 1 second between polls
+        let attempts = 0;
 
-            // Second, try to get session info and pre-fill email
-            if (sessionId) {
-                try {
-                    const res = await fetch(`/api/session/${sessionId}`);
-                    if (res.ok) {
-                        const session = await res.json();
-                        if (session.email) {
-                            emailInput.value = session.email;
-                        }
-                        // Check if license already delivered via session
-                        const statusRes = await fetch(`/api/payment-status/${sessionId}`);
-                        if (statusRes.ok) {
-                            const status = await statusRes.json();
-                            if (status.status === 'completed' && status.license_key) {
-                                showLicense(status.license_key);
-                                return;
-                            }
-                        }
-                    }
-                } catch (err) {
-                    console.log('Session lookup failed');
-                }
-            }
+        // Show specific state
+        function showState(state) {
+            loadingState.classList.remove('show');
+            successState.classList.remove('show');
+            errorState.classList.remove('show');
+            state.classList.add('show');
+        }
 
-            hideMessages();
-        });
+        // Show success with license key
+        function showSuccess(key) {
+            licenseKeyEl.textContent = key;
+            showState(successState);
+        }
 
-        claimBtn.addEventListener('click', async () => {
-            const email = emailInput.value.trim().toLowerCase();
-            
-            if (!email || !email.includes('@')) {
-                showError('Please enter a valid email address');
-                return;
-            }
+        // Show error
+        function showError(message) {
+            errorMessage.textContent = message || 'We couldn\'t find your license key. Please contact support.';
+            showState(errorState);
+        }
 
-            claimBtn.disabled = true;
-            claimBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Claiming...';
-            hideMessages();
-
-            try {
-                const res = await fetch('/api/claim-by-email', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email })
-                });
-
-                const data = await res.json();
-
-                if (data.success && data.licenseKey) {
-                    showLicense(data.licenseKey);
-                } else if (data.status === 'pending') {
-                    showInfo('Payment still processing. This may take up to 30 seconds. Please wait and try again.');
-                } else if (data.status === 'not_found') {
-                    showError('No purchase found for this email. Make sure you use the same email you entered during Polar checkout (not your Discord email).');
-                } else if (data.status === 'no_stock') {
-                    showError('License keys are temporarily out of stock. Please contact support and we will resolve this immediately.');
-                } else {
-                    showError(data.error || 'Failed to claim license. Contact support.');
-                }
-            } catch (err) {
-                showError('Connection error. Please try again.');
-            } finally {
-                claimBtn.disabled = false;
-                claimBtn.innerHTML = '<i class="fas fa-key"></i> Claim License Key';
-            }
-        });
-
-        emailInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') claimBtn.click();
-        });
-
+        // Copy to clipboard
         copyBtn.addEventListener('click', async () => {
-            const key = licenseKey.textContent;
+            const key = licenseKeyEl.textContent;
             try {
                 await navigator.clipboard.writeText(key);
                 copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                copyBtn.classList.add('copied');
                 setTimeout(() => {
-                    copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
-                }, 2000);
+                    copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy to Clipboard';
+                    copyBtn.classList.remove('copied');
+                }, 2500);
             } catch (err) {
+                // Fallback for older browsers
                 const ta = document.createElement('textarea');
                 ta.value = key;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
                 document.body.appendChild(ta);
                 ta.select();
                 document.execCommand('copy');
                 document.body.removeChild(ta);
                 copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                copyBtn.classList.add('copied');
                 setTimeout(() => {
-                    copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
-                }, 2000);
+                    copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy to Clipboard';
+                    copyBtn.classList.remove('copied');
+                }, 2500);
             }
         });
 
-        function showLicense(key) {
-            claimForm.style.display = 'none';
-            licenseKey.textContent = key;
-            licenseBox.classList.add('show');
-            document.querySelector('.subtitle').textContent = 'Your license key is ready!';
+        // Retry button
+        retryBtn.addEventListener('click', () => {
+            attempts = 0;
+            showState(loadingState);
+            pollForLicense();
+        });
+
+        // Poll for license key
+        async function pollForLicense() {
+            attempts++;
+
+            try {
+                // Try checkout_id first if available
+                if (checkoutId) {
+                    const res = await fetch(`/api/claim-key?checkout_id=${encodeURIComponent(checkoutId)}`);
+                    const data = await res.json();
+                    
+                    if (data.status === 'ready' && data.key) {
+                        showSuccess(data.key);
+                        return;
+                    }
+                }
+
+                // Try session-based lookup
+                if (sessionId) {
+                    const res = await fetch(`/api/payment-status/${sessionId}`);
+                    const data = await res.json();
+                    
+                    if (data.status === 'completed' && (data.license_key || data.licenseKey)) {
+                        showSuccess(data.license_key || data.licenseKey);
+                        return;
+                    }
+                }
+
+                // Continue polling if not ready
+                if (attempts < MAX_ATTEMPTS) {
+                    setTimeout(pollForLicense, POLL_INTERVAL);
+                } else {
+                    showError('Payment verification timed out. Your license may still be delivered to your Discord DMs. If not, please contact support.');
+                }
+            } catch (err) {
+                console.error('Poll error:', err);
+                if (attempts < MAX_ATTEMPTS) {
+                    setTimeout(pollForLicense, POLL_INTERVAL);
+                } else {
+                    showError('Connection error. Please check your Discord DMs or contact support.');
+                }
+            }
         }
 
-        function showError(msg) {
-            errorText.textContent = msg;
-            errorMsg.classList.add('show');
-            infoMsg.classList.remove('show');
-        }
-
-        function showInfo(msg) {
-            infoText.textContent = msg;
-            infoMsg.classList.add('show');
-            errorMsg.classList.remove('show');
-        }
-
-        function hideMessages() {
-            errorMsg.classList.remove('show');
-            infoMsg.classList.remove('show');
-        }
+        // Start polling when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!sessionId && !checkoutId) {
+                showError('No payment session found. If you completed a purchase, please check your Discord DMs for your license key.');
+                return;
+            }
+            pollForLicense();
+        });
     </script>
 </body>
 </html>
