@@ -4,54 +4,252 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SwimHub</title>
-    <meta name="description" content="SwimHub - Premium gaming scripts with license-based access">
+    <meta name="description" content="SwimHub - Premium gaming enhancement scripts">
     <meta name="theme-color" content="#0a0a0b">
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a0a0b;
+            --bg-elevated: #111113;
+            --bg-card: rgba(17, 17, 19, 0.8);
+            --text-primary: #fafafa;
+            --text-secondary: #888;
+            --text-muted: #555;
+            --accent: #2563eb;
+            --accent-hover: #3b82f6;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.15);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+        }
+
+        .ambient-bg {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: 
+                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(37, 99, 235, 0.12), transparent),
+                radial-gradient(ellipse 60% 40% at 100% 100%, rgba(139, 92, 246, 0.06), transparent);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .main {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 24px;
+        }
+
+        .hero {
+            text-align: center;
+            max-width: 680px;
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo { margin-bottom: 32px; }
+
+        .logo-text {
+            font-size: 56px;
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            line-height: 1;
+        }
+
+        .logo-swim { color: var(--text-primary); }
+
+        .logo-hub {
+            background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .logo-face {
+            font-size: 18px;
+            color: var(--text-muted);
+            margin-top: 8px;
+            font-weight: 400;
+            letter-spacing: 0.1em;
+        }
+
+        .tagline {
+            font-size: 20px;
+            color: var(--text-secondary);
+            margin-bottom: 48px;
+            font-weight: 400;
+            line-height: 1.5;
+        }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 48px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--border-hover);
+        }
+
+        .btn-icon {
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .btn-icon:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+        }
+
+        .btn-icon i { font-size: 18px; }
+
+        .social-links { display: flex; gap: 8px; }
+
+        .footer-text { text-align: center; }
+        .footer-text p { color: var(--text-muted); font-size: 13px; margin-bottom: 4px; }
+        .footer-text a { color: var(--text-secondary); text-decoration: none; transition: color 0.2s; }
+        .footer-text a:hover { color: var(--accent); }
+
+        .features {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 32px;
+        }
+
+        .feature-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .feature-pill i { color: var(--accent); font-size: 10px; }
+
+        @media (max-width: 640px) {
+            .logo-text { font-size: 42px; }
+            .tagline { font-size: 17px; }
+            .actions { flex-direction: column; width: 100%; }
+            .btn { width: 100%; justify-content: center; }
+            .social-links { justify-content: center; width: 100%; }
+        }
+    </style>
 </head>
 <body>
-    <div class="glow-effect"></div>
-    <div class="container">
-        <div class="brand-name">
-            <span class="letter s-letter">swim</span><span class="rest-text hub-text">hub</span>
-        </div>
-        
-        <div class="logo-face">
-            <span class="paren">(</span>
-            <span class="horn-left">▲</span>
-            <span class="underscore">_</span>
-            <span class="horn-right">▲</span>
-            <span class="paren">)</span>
-        </div>
-        
-        <p class="license-text">A license is required to use this script.</p>
-        
-        <div class="buttons">
-            <a href="https://dsc.gg/swimhub" target="_blank" class="btn btn-primary">
-                <i class="fas fa-code"></i> Get Script
-            </a>
-            <a href="https://github.com/SWIMHUBISWIMMING" target="_blank" class="btn btn-icon">
-                <i class="fab fa-github"></i>
-            </a>
-            <a href="https://dsc.gg/swimhub" target="_blank" class="btn btn-icon">
-                <i class="fab fa-discord"></i>
-            </a>
-            <a href="#" class="btn btn-icon">
-                <i class="fas fa-qrcode"></i>
-            </a>
-            <a href="purchase.html" class="btn btn-primary btn-purchase">
-                <i class="fas fa-shopping-cart"></i> Purchase
-            </a>
-        </div>
-        
-        <p class="terms-text">
-            By using our script, you agree to our <a href="terms.html">Terms of Service</a> and <a href="privacy.html">Privacy Policy</a>.
-        </p>
-        <p class="domain-text">swimhub.store is the official domain for this software.</p>
-    </div>
+    <div class="ambient-bg"></div>
+    
+    <main class="main">
+        <div class="hero">
+            <div class="logo">
+                <div class="logo-text">
+                    <span class="logo-swim">swim</span><span class="logo-hub">hub</span>
+                </div>
+                <div class="logo-face">(▲_▲)</div>
+            </div>
 
-    <script src="script.js"></script>
+            <p class="tagline">Premium scripts for Roblox games.<br>Fast, reliable, and always updated.</p>
+
+            <div class="features">
+                <span class="feature-pill"><i class="fas fa-check"></i> 10+ Games</span>
+                <span class="feature-pill"><i class="fas fa-check"></i> Instant Delivery</span>
+                <span class="feature-pill"><i class="fas fa-check"></i> 24/7 Support</span>
+            </div>
+
+            <div class="actions">
+                <a href="purchase.html" class="btn btn-primary">
+                    <i class="fas fa-shopping-bag"></i> Purchase License
+                </a>
+                <a href="https://dsc.gg/swimhub" target="_blank" class="btn btn-secondary">
+                    <i class="fab fa-discord"></i> Join Discord
+                </a>
+                <div class="social-links">
+                    <a href="https://github.com/SWIMHUBISWIMMING" target="_blank" class="btn btn-icon" title="GitHub">
+                        <i class="fab fa-github"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="footer-text">
+                <p>By using SwimHub, you agree to our <a href="terms.html">Terms</a> & <a href="privacy.html">Privacy Policy</a></p>
+                <p style="margin-top: 8px; color: #444;">swimhub.club</p>
+            </div>
+        </div>
+    </main>
 </body>
 </html>

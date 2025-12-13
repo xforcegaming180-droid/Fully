@@ -3,336 +3,523 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwimHub - Purchase</title>
-    <meta name="description" content="Purchase SwimHub - Choose from Regular or Master plans">
+    <title>SwimHub - Pricing</title>
+    <meta name="description" content="Choose your SwimHub plan">
     <meta name="theme-color" content="#0a0a0b">
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-</head>
-<body class="purchase-page">
-    <!-- Subtle Background Effects -->
-    <div class="gradient-orb orb-1"></div>
-    <div class="gradient-orb orb-2"></div>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-    <div class="purchase-container">
-        <a href="index.html" class="back-btn">
-            <i class="fas fa-arrow-left"></i> Back to Home
+        :root {
+            --bg: #0a0a0b;
+            --bg-elevated: #111113;
+            --bg-card: rgba(17, 17, 19, 0.6);
+            --text-primary: #fafafa;
+            --text-secondary: #888;
+            --text-muted: #555;
+            --accent: #2563eb;
+            --accent-hover: #3b82f6;
+            --purple: #8b5cf6;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.15);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            line-height: 1.5;
+        }
+
+        .ambient {
+            position: fixed;
+            inset: 0;
+            background: 
+                radial-gradient(ellipse 80% 50% at 50% -10%, rgba(37, 99, 235, 0.1), transparent),
+                radial-gradient(ellipse 50% 40% at 100% 100%, rgba(139, 92, 246, 0.05), transparent);
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 48px;
+            transition: color 0.2s;
+        }
+        .back-link:hover { color: var(--text-primary); }
+
+        .header {
+            text-align: center;
+            margin-bottom: 56px;
+        }
+
+        .header h1 {
+            font-size: 40px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: 12px;
+        }
+
+        .header p {
+            font-size: 17px;
+            color: var(--text-secondary);
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            backdrop-filter: blur(20px);
+            position: relative;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+
+        .card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-2px);
+        }
+
+        .card.featured {
+            border-color: var(--accent);
+            background: linear-gradient(180deg, rgba(37, 99, 235, 0.05) 0%, var(--bg-card) 100%);
+        }
+
+        .badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 20px;
+            letter-spacing: 0.05em;
+        }
+
+        .card-header {
+            text-align: center;
+            margin-bottom: 28px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 20px;
+            color: white;
+        }
+
+        .card h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            letter-spacing: -0.02em;
+        }
+
+        .card-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .price-section {
+            margin-bottom: 24px;
+        }
+
+        .price-label {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 12px;
+        }
+
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+        }
+
+        .price-row + .price-row {
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .duration {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .duration i {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .price {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .games-section {
+            margin-bottom: 28px;
+        }
+
+        .games-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .game-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .game-tag i { font-size: 10px; color: var(--accent); }
+
+        .payments {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .payment-icon {
+            width: 36px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: var(--text-muted);
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--border-hover);
+        }
+
+        .btn-muted {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .btn-muted:hover {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-primary);
+        }
+
+        .footer {
+            text-align: center;
+            padding-top: 40px;
+            border-top: 1px solid var(--border);
+        }
+
+        .footer-logo {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .footer-logo .swim { color: var(--text-primary); }
+        .footer-logo .hub { color: var(--accent); }
+
+        .footer-face {
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+
+        .footer p {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+
+        .footer a:hover { color: var(--accent); }
+
+        @media (max-width: 768px) {
+            .header h1 { font-size: 32px; }
+            .pricing-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient"></div>
+
+    <div class="container">
+        <a href="index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back
         </a>
-        
-        <div class="page-header">
-            <h1 class="page-title">Purchase SwimHub</h1>
-            <p class="page-subtitle">Choose the plan that fits your needs</p>
+
+        <div class="header">
+            <h1>Choose your plan</h1>
+            <p>Get instant access to premium scripts</p>
         </div>
-        
+
         <div class="pricing-grid">
-            <!-- SwimHub Regular -->
-            <div class="pricing-card">
+            <!-- Regular -->
+            <div class="card">
                 <div class="card-header">
-                    <div class="card-icon">
-                        <i class="fas fa-bolt"></i>
-                    </div>
-                    <h2 class="card-title">SwimHub Regular</h2>
-                    <p class="card-description">Essential features for everyday use</p>
+                    <div class="card-icon"><i class="fas fa-bolt"></i></div>
+                    <h2>Regular</h2>
+                    <p class="card-desc">Essential features for everyday use</p>
                 </div>
-                
-                <div class="pricing-section">
-                    <div class="section-title">
-                        <i class="fab fa-stripe"></i>
-                        <span>Crypto / Card / CashApp / Apple Pay</span>
-                    </div>
+
+                <div class="price-section">
+                    <div class="price-label">Card / Crypto / CashApp</div>
                     <div class="price-row">
-                        <span class="duration">
-                            <i class="fas fa-calendar duration-icon"></i>
-                            30 Days
-                        </span>
+                        <span class="duration"><i class="fas fa-calendar"></i> Monthly</span>
                         <span class="price">$3.50</span>
                     </div>
                     <div class="price-row">
-                        <span class="duration">
-                            <i class="fas fa-infinity duration-icon"></i>
-                            Lifetime
-                        </span>
+                        <span class="duration"><i class="fas fa-infinity"></i> Lifetime</span>
                         <span class="price">$7.00</span>
                     </div>
                 </div>
-                
-                <div class="pricing-section">
-                    <div class="section-title">
-                        <i class="fas fa-gamepad"></i>
-                        <span>Robux</span>
-                    </div>
+
+                <div class="price-section">
+                    <div class="price-label">Robux</div>
                     <div class="price-row">
-                        <span class="duration">
-                            <i class="fas fa-calendar duration-icon"></i>
-                            30 Days
-                        </span>
+                        <span class="duration"><i class="fas fa-calendar"></i> Monthly</span>
                         <span class="price">750 R$</span>
                     </div>
                     <div class="price-row">
-                        <span class="duration">
-                            <i class="fas fa-infinity duration-icon"></i>
-                            Lifetime
-                        </span>
+                        <span class="duration"><i class="fas fa-infinity"></i> Lifetime</span>
                         <span class="price">1,750 R$</span>
                     </div>
                 </div>
-                
+
                 <div class="games-section">
-                    <div class="section-title">
-                        <i class="fas fa-gamepad"></i>
-                        <span>Supported Games (7)</span>
-                    </div>
-                    <div class="games-list">
-                        <div class="game-item"><i class="fas fa-globe"></i> Universal</div>
-                        <div class="game-item"><i class="fas fa-water"></i> Trident Survival</div>
-                        <div class="game-item"><i class="fas fa-crosshairs"></i> Project Delta</div>
-                        <div class="game-item"><i class="fas fa-skull"></i> Criminality</div>
-                        <div class="game-item"><i class="fas fa-biohazard"></i> Apocalypse Rising 2</div>
-                        <div class="game-item"><i class="fas fa-paint-brush"></i> Typical Colors 2</div>
-                        <div class="game-item"><i class="fas fa-ghost"></i> Phantom Forces</div>
+                    <div class="price-label">7 Supported Games</div>
+                    <div class="games-grid">
+                        <span class="game-tag"><i class="fas fa-check"></i> Universal</span>
+                        <span class="game-tag"><i class="fas fa-check"></i> Trident Survival</span>
+                        <span class="game-tag"><i class="fas fa-check"></i> Project Delta</span>
+                        <span class="game-tag"><i class="fas fa-check"></i> Criminality</span>
+                        <span class="game-tag"><i class="fas fa-check"></i> Apocalypse Rising 2</span>
+                        <span class="game-tag"><i class="fas fa-check"></i> Typical Colors 2</span>
+                        <span class="game-tag"><i class="fas fa-check"></i> Phantom Forces</span>
                     </div>
                 </div>
-                
-                <div class="payment-methods">
-                    <p class="payment-label">Accepted Payments</p>
-                    <div class="payment-icons">
-                        <div class="payment-icon" title="Apple Pay">
-                            <i class="fab fa-apple-pay"></i>
-                        </div>
-                        <div class="payment-icon" title="Credit Card">
-                            <i class="fas fa-credit-card"></i>
-                        </div>
-                        <div class="payment-icon" title="Crypto">
-                            <i class="fab fa-bitcoin"></i>
-                        </div>
-                        <div class="payment-icon" title="Stripe">
-                            <i class="fab fa-stripe-s"></i>
-                        </div>
-                        <div class="payment-icon" title="CashApp">
-                            <i class="fas fa-dollar-sign"></i>
-                        </div>
-                    </div>
+
+                <div class="payments">
+                    <div class="payment-icon" title="Apple Pay"><i class="fab fa-apple-pay"></i></div>
+                    <div class="payment-icon" title="Card"><i class="fas fa-credit-card"></i></div>
+                    <div class="payment-icon" title="Crypto"><i class="fab fa-bitcoin"></i></div>
+                    <div class="payment-icon" title="CashApp"><i class="fas fa-dollar-sign"></i></div>
                 </div>
-                
-                <div class="cta-buttons fungies-buttons">
-                    <a href="/auth/discord?product=regular-monthly" class="cta-button fungies-btn monthly-btn" data-product="regular-monthly">
+
+                <div class="btn-group">
+                    <a href="/auth/discord?product=regular-monthly" class="btn btn-secondary">
                         <i class="fab fa-discord"></i> Purchase Monthly
                     </a>
-                    <a href="/auth/discord?product=regular-lifetime" class="cta-button fungies-btn lifetime-btn" data-product="regular-lifetime">
+                    <a href="/auth/discord?product=regular-lifetime" class="btn btn-primary">
                         <i class="fab fa-discord"></i> Purchase Lifetime
                     </a>
                 </div>
-                <div class="cta-buttons secondary-buttons">
-                    <a href="https://divine.land/product/swimhub/" target="_blank" rel="noopener noreferrer" class="cta-button paypal-btn">
-                        <i class="fab fa-paypal"></i> PayPal (Reseller)
-                    </a>
-                </div>
             </div>
-            
-            <!-- SwimHub Master Package -->
-            <div class="pricing-card featured">
-                <span class="featured-badge">POPULAR</span>
+
+            <!-- Master -->
+            <div class="card featured">
+                <span class="badge">POPULAR</span>
                 <div class="card-header">
-                    <div class="card-icon">
-                        <i class="fas fa-crown"></i>
-                    </div>
-                    <h2 class="card-title">SwimHub Master</h2>
-                    <p class="card-description">Full access with premium features</p>
+                    <div class="card-icon"><i class="fas fa-crown"></i></div>
+                    <h2>Master</h2>
+                    <p class="card-desc">Full access with premium features</p>
                 </div>
-                
-                <div class="pricing-section">
-                    <div class="section-title">
-                        <i class="fab fa-stripe"></i>
-                        <span>Crypto / Card / CashApp / Apple Pay</span>
-                    </div>
+
+                <div class="price-section">
+                    <div class="price-label">Card / Crypto / CashApp</div>
                     <div class="price-row">
-                        <span class="duration">
-                            <i class="fas fa-calendar duration-icon"></i>
-                            30 Days
-                        </span>
+                        <span class="duration"><i class="fas fa-calendar"></i> Monthly</span>
                         <span class="price">$7.00</span>
                     </div>
                     <div class="price-row">
-                        <span class="duration">
-                            <i class="fas fa-infinity duration-icon"></i>
-                            Lifetime
-                        </span>
+                        <span class="duration"><i class="fas fa-infinity"></i> Lifetime</span>
                         <span class="price">$15.00</span>
                     </div>
                 </div>
-                
-                <div class="pricing-section">
-                    <div class="section-title">
-                        <i class="fas fa-gamepad"></i>
-                        <span>Robux</span>
-                    </div>
+
+                <div class="price-section">
+                    <div class="price-label">Robux</div>
                     <div class="price-row">
-                        <span class="duration">
-                            <i class="fas fa-calendar duration-icon"></i>
-                            30 Days
-                        </span>
+                        <span class="duration"><i class="fas fa-calendar"></i> Monthly</span>
                         <span class="price">1,750 R$</span>
                     </div>
                     <div class="price-row">
-                        <span class="duration">
-                            <i class="fas fa-infinity duration-icon"></i>
-                            Lifetime
-                        </span>
+                        <span class="duration"><i class="fas fa-infinity"></i> Lifetime</span>
                         <span class="price">3,800 R$</span>
                     </div>
                 </div>
-                
+
                 <div class="games-section">
-                    <div class="section-title">
-                        <i class="fas fa-gamepad"></i>
-                        <span>Supported Games (10)</span>
-                    </div>
-                    <div class="games-list">
-                        <div class="game-item"><i class="fas fa-globe"></i> Universal</div>
-                        <div class="game-item"><i class="fas fa-water"></i> Trident Survival</div>
-                        <div class="game-item"><i class="fas fa-crosshairs"></i> Project Delta</div>
-                        <div class="game-item"><i class="fas fa-skull"></i> Criminality</div>
-                        <div class="game-item"><i class="fas fa-biohazard"></i> Apocalypse Rising 2</div>
-                        <div class="game-item"><i class="fas fa-paint-brush"></i> Typical Colors 2</div>
-                        <div class="game-item"><i class="fas fa-skull-crossbones"></i> Fallen Survival</div>
-                        <div class="game-item"><i class="fas fa-clock"></i> Deadline</div>
-                        <div class="game-item"><i class="fas fa-users"></i> Rivals</div>
-                        <div class="game-item"><i class="fas fa-ghost"></i> Phantom Forces</div>
+                    <div class="price-label">10 Supported Games</div>
+                    <div class="games-grid">
+                        <span class="game-tag"><i class="fas fa-check"></i> Universal</span>
+                        <span class="game-tag"><i class="fas fa-check"></i> Trident Survival</span>
+                        <span class="game-tag"><i class="fas fa-check"></i> Project Delta</span>
+                        <span class="game-tag"><i class="fas fa-check"></i> Criminality</span>
+                        <span class="game-tag"><i class="fas fa-check"></i> Apocalypse Rising 2</span>
+                        <span class="game-tag"><i class="fas fa-check"></i> Typical Colors 2</span>
+                        <span class="game-tag"><i class="fas fa-check"></i> Fallen Survival</span>
+                        <span class="game-tag"><i class="fas fa-check"></i> Deadline</span>
+                        <span class="game-tag"><i class="fas fa-check"></i> Rivals</span>
+                        <span class="game-tag"><i class="fas fa-check"></i> Phantom Forces</span>
                     </div>
                 </div>
-                
-                <div class="payment-methods">
-                    <p class="payment-label">Accepted Payments</p>
-                    <div class="payment-icons">
-                        <div class="payment-icon" title="Apple Pay">
-                            <i class="fab fa-apple-pay"></i>
-                        </div>
-                        <div class="payment-icon" title="Credit Card">
-                            <i class="fas fa-credit-card"></i>
-                        </div>
-                        <div class="payment-icon" title="Crypto">
-                            <i class="fab fa-bitcoin"></i>
-                        </div>
-                        <div class="payment-icon" title="Stripe">
-                            <i class="fab fa-stripe-s"></i>
-                        </div>
-                        <div class="payment-icon" title="CashApp">
-                            <i class="fas fa-dollar-sign"></i>
-                        </div>
-                    </div>
+
+                <div class="payments">
+                    <div class="payment-icon" title="Apple Pay"><i class="fab fa-apple-pay"></i></div>
+                    <div class="payment-icon" title="Card"><i class="fas fa-credit-card"></i></div>
+                    <div class="payment-icon" title="Crypto"><i class="fab fa-bitcoin"></i></div>
+                    <div class="payment-icon" title="CashApp"><i class="fas fa-dollar-sign"></i></div>
                 </div>
-                
-                <div class="cta-buttons fungies-buttons">
-                    <a href="/auth/discord?product=master-monthly" class="cta-button fungies-btn monthly-btn" data-product="master-monthly">
+
+                <div class="btn-group">
+                    <a href="/auth/discord?product=master-monthly" class="btn btn-secondary">
                         <i class="fab fa-discord"></i> Purchase Monthly
                     </a>
-                    <a href="/auth/discord?product=master-lifetime" class="cta-button fungies-btn lifetime-btn" data-product="master-lifetime">
+                    <a href="/auth/discord?product=master-lifetime" class="btn btn-primary">
                         <i class="fab fa-discord"></i> Purchase Lifetime
                     </a>
                 </div>
-                <div class="cta-buttons secondary-buttons">
-                    <a href="https://divine.land/product/swimhub/" target="_blank" rel="noopener noreferrer" class="cta-button paypal-btn">
-                        <i class="fab fa-paypal"></i> PayPal (Reseller)
+            </div>
+
+            <!-- Nightly -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #6366f1, #a855f7);"><i class="fas fa-moon"></i></div>
+                    <h2>Nightly</h2>
+                    <p class="card-desc">Exclusive alpha access</p>
+                </div>
+
+                <div class="price-section">
+                    <div class="price-label">Alpha Access</div>
+                    <div class="price-row">
+                        <span class="duration"><i class="fas fa-lock"></i> By invitation only</span>
+                        <span class="price" style="color: var(--text-secondary);">Contact Us</span>
+                    </div>
+                </div>
+
+                <div class="games-section">
+                    <div class="price-label">11+ Games + Exclusives</div>
+                    <div class="games-grid">
+                        <span class="game-tag"><i class="fas fa-check"></i> All Master games</span>
+                        <span class="game-tag"><i class="fas fa-flask"></i> Games Unite Testing</span>
+                        <span class="game-tag"><i class="fas fa-flask"></i> Project SCP</span>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <a href="https://dsc.gg/swimhub" target="_blank" class="btn btn-muted">
+                        <i class="fab fa-discord"></i> Contact for Access
                     </a>
                 </div>
             </div>
-            
-            <!-- Nightly Slots -->
-            <div class="pricing-card nightly-card">
-                <div class="card-header">
-                    <div class="card-icon">
-                        <i class="fas fa-moon"></i>
-                    </div>
-                    <h2 class="card-title">Nightly Slots</h2>
-                    <p class="card-description">Exclusive alpha access</p>
-                    <div class="slots-container">
-                        <span class="slots-badge">
-                            <span class="slots-dot"></span>
-                            0/10 Available
-                        </span>
-                    </div>
-                </div>
-                
-                <div class="pricing-section">
-                    <div class="section-title">
-                        <i class="fas fa-lock"></i>
-                        <span>Alpha Access</span>
-                    </div>
-                    <div class="price-row">
-                        <span class="duration">
-                            <i class="fas fa-eye-slash duration-icon"></i>
-                            Price
-                        </span>
-                        <span class="price">Undisclosed</span>
-                    </div>
-                </div>
-                
-                <div class="games-section">
-                    <div class="section-title">
-                        <i class="fas fa-gamepad"></i>
-                        <span>Supported Games (11) + Nightly Exclusives</span>
-                    </div>
-                    <div class="games-list">
-                        <div class="game-item"><i class="fas fa-globe"></i> Universal</div>
-                        <div class="game-item"><i class="fas fa-water"></i> Trident Survival</div>
-                        <div class="game-item"><i class="fas fa-crosshairs"></i> Project Delta</div>
-                        <div class="game-item"><i class="fas fa-skull"></i> Criminality</div>
-                        <div class="game-item"><i class="fas fa-biohazard"></i> Apocalypse Rising 2</div>
-                        <div class="game-item"><i class="fas fa-paint-brush"></i> Typical Colors 2</div>
-                        <div class="game-item"><i class="fas fa-skull-crossbones"></i> Fallen Survival</div>
-                        <div class="game-item"><i class="fas fa-clock"></i> Deadline</div>
-                        <div class="game-item"><i class="fas fa-users"></i> Rivals</div>
-                        <div class="game-item"><i class="fas fa-ghost"></i> Phantom Forces</div>
-                        <div class="game-item testing-game"><i class="fas fa-flask"></i> Games Unite Testing Place <span class="testing-badge">TESTING</span></div>
-                        <div class="game-item testing-game"><i class="fas fa-flask"></i> Project SCP <span class="testing-badge">TESTING</span></div>
-                    </div>
-                </div>
-                
-                <p class="nightly-note">
-                    <i class="fas fa-info-circle"></i> 
-                    Alpha price is undisclosed publicly.<br>
-                    <i class="fas fa-times-circle"></i>
-                    Robux payments are <strong>not accepted</strong> for Nightly.
-                </p>
-                
-                <div class="payment-methods">
-                    <p class="payment-label">Accepted Payments</p>
-                    <div class="payment-icons">
-                        <div class="payment-icon" title="Apple Pay">
-                            <i class="fab fa-apple-pay"></i>
-                        </div>
-                        <div class="payment-icon" title="Credit Card">
-                            <i class="fas fa-credit-card"></i>
-                        </div>
-                        <div class="payment-icon" title="Crypto">
-                            <i class="fab fa-bitcoin"></i>
-                        </div>
-                        <div class="payment-icon" title="Stripe">
-                            <i class="fab fa-stripe-s"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <a href="https://dsc.gg/swimhub" target="_blank" class="cta-button">
-                    Contact for Access <i class="fas fa-arrow-right"></i>
-                </a>
-            </div>
         </div>
-        
-        <!-- Footer Section -->
-        <div class="footer-section">
+
+        <div class="footer">
             <div class="footer-logo">
                 <span class="swim">swim</span><span class="hub">hub</span>
             </div>
             <div class="footer-face">(▲_▲)</div>
-            <p class="footer-note">
-                For purchases, please join our <a href="https://dsc.gg/swimhub" target="_blank">Discord</a> and create a ticket.
-            </p>
+            <p>Need help? Join our <a href="https://dsc.gg/swimhub" target="_blank">Discord</a></p>
         </div>
     </div>
-    
-    <script src="script.js"></script>
 </body>
 </html>

@@ -872,6 +872,104 @@ app.get('/api/claim-key', pollingLimiter, async (req, res) => {
   }
 });
 
+// ============ EMAIL-BASED CLAIM (Webhook-Free) ============
+// This endpoint allows users to claim their license by entering their email
+// after completing a Polar purchase. No webhook required!
+app.post('/api/claim-by-email', pollingLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Valid email required', status: 'error' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    console.log(`📧 Claim request for email: ${normalizedEmail}`);
+
+    // Find pending purchase by email
+    const session = await getPendingPurchaseByEmail(normalizedEmail);
+
+    if (!session) {
+      console.log(`❌ No pending purchase found for: ${normalizedEmail}`);
+      return res.json({ status: 'not_found', success: false });
+    }
+
+    // Check if already completed
+    if (session.status === 'completed' && session.license_key) {
+      console.log(`✅ Returning existing license for: ${normalizedEmail}`);
+      return res.json({ 
+        success: true, 
+        licenseKey: session.license_key,
+        status: 'completed'
+      });
+    }
+
+    // Get an available license key for this product type
+    const availableKey = await getAvailableLicenseKey(session.product);
+    
+    if (!availableKey) {
+      console.error(`❌ No available keys for product: ${session.product}`);
+      // Notify admin
+      if (discordClient && process.env.ADMIN_DISCORD_ID) {
+        try {
+          const admin = await discordClient.users.fetch(process.env.ADMIN_DISCORD_ID);
+          const embed = new EmbedBuilder()
+            .setColor('#ef4444')
+            .setTitle('🚨 OUT OF STOCK - Customer Waiting!')
+            .setDescription(`A customer is trying to claim a key but stock is empty.`)
+            .addFields(
+              { name: 'Customer Email', value: normalizedEmail, inline: true },
+              { name: 'Discord', value: session.discord_username || 'N/A', inline: true },
+              { name: 'Product', value: session.product, inline: true }
+            )
+            .setFooter({ text: 'Add keys with /addlicense immediately!' })
+            .setTimestamp();
+          await admin.send({ embeds: [embed] });
+        } catch (e) { console.error('Failed to notify admin:', e.message); }
+      }
+      return res.json({ 
+        status: 'no_stock', 
+        success: false, 
+        error: 'No license keys available. Please contact support.' 
+      });
+    }
+
+    const licenseKey = availableKey.license_key;
+
+    // Claim the license
+    await claimLicenseKey(availableKey.id, session.discord_id, normalizedEmail);
+    
+    // Assign to user
+    await assignLicenseToUser(session.discord_id, session.discord_username, licenseKey, session.product);
+    
+    // Mark purchase as completed
+    await markPurchaseCompleted(session.session_id, licenseKey);
+    
+    // Log the purchase
+    await logPurchase(licenseKey, normalizedEmail, session.discord_id, session.discord_username, session.product);
+
+    console.log(`✅ License claimed: ${licenseKey} for ${normalizedEmail}`);
+
+    // Send license to user via Discord DM
+    const product = PRODUCTS[session.product];
+    const dmSuccess = await sendLicenseDM(session.discord_id, licenseKey, product);
+    
+    // Send admin notification
+    await sendAdminNotification(session, licenseKey, product);
+
+    return res.json({ 
+      success: true, 
+      licenseKey, 
+      status: 'completed',
+      dmSent: dmSuccess
+    });
+
+  } catch (error) {
+    console.error('Claim by email error:', error);
+    return res.status(500).json({ error: error.message, status: 'error' });
+  }
+});
+
 // License API endpoints
 app.post('/api/licenses/add', async (req, res) => {
   const { keys, token } = req.body;
@@ -1273,63 +1371,56 @@ discordClient.on('interactionCreate', async (interaction) => {
           return interaction.reply({ content: '❌ Admin only', flags: MessageFlags.Ephemeral });
         }
 
-        // Get stats from both tables
+        // Get stats from product-specific table only (this is what we actually use)
         const licenseStockStats = await getStockByProductType();
-        const licensesStats = await getLicensesStats();
 
         const embed = new EmbedBuilder()
-          .setColor('#00d4ff')
+          .setColor('#2563eb')
           .setTitle('📊 License Stock Overview')
-          .setDescription('Complete inventory of all license keys')
+          .setDescription('Current inventory of all license keys')
           .setTimestamp();
 
-        // Add Polar integration licenses (generic, no product type)
-        embed.addFields({
-          name: '🔹 Polar Integration Keys',
-          value: `Available: **${licensesStats.available}** | Used: **${licensesStats.used}** | Total: **${licensesStats.total}**`,
-          inline: false
-        });
-
-        // Add product-specific licenses (legacy)
+        // Add product-specific licenses
         if (licenseStockStats.length === 0) {
           embed.addFields({ 
-            name: '🔸 Product-Specific Keys (Legacy)', 
-            value: 'No product-specific keys in database', 
+            name: '📦 License Keys', 
+            value: 'No license keys in database.\nUse `/addlicense` to add keys.', 
             inline: false 
           });
         } else {
-          const productLines = [];
+          let totalAvailable = 0;
+          let totalUsed = 0;
+          let grandTotal = 0;
+
           for (const stock of licenseStockStats) {
             const productType = stock.product_type || 'Unknown';
-            const available = stock.available || '0';
-            const used = stock.used || '0';
-            const total = stock.total || '0';
+            const available = parseInt(stock.available) || 0;
+            const used = parseInt(stock.used) || 0;
+            const total = parseInt(stock.total) || 0;
+            
+            totalAvailable += available;
+            totalUsed += used;
+            grandTotal += total;
             
             // Find matching product display name
             const productName = PRODUCTS[productType]?.name || productType;
-            productLines.push(`**${productName}**\nAvailable: ${available} | Used: ${used} | Total: ${total}`);
+            
+            // Status indicator
+            const statusEmoji = available > 10 ? '🟢' : available > 0 ? '🟡' : '🔴';
+            
+            embed.addFields({
+              name: `${statusEmoji} ${productName}`,
+              value: `Available: **${available}** | Used: **${used}** | Total: **${total}**`,
+              inline: false
+            });
           }
-          
+
           embed.addFields({
-            name: '🔸 Product-Specific Keys (Legacy)',
-            value: productLines.join('\n\n'),
+            name: '━━━━━━━━━━━━━━━━━━',
+            value: `**📈 Grand Total**\nAvailable: **${totalAvailable}** | Used: **${totalUsed}** | Total: **${grandTotal}**`,
             inline: false
           });
         }
-
-        // Add summary
-        const totalAvailable = parseInt(licensesStats.available) + 
-          licenseStockStats.reduce((sum, s) => sum + parseInt(s.available || 0), 0);
-        const totalUsed = parseInt(licensesStats.used) + 
-          licenseStockStats.reduce((sum, s) => sum + parseInt(s.used || 0), 0);
-        const grandTotal = parseInt(licensesStats.total) + 
-          licenseStockStats.reduce((sum, s) => sum + parseInt(s.total || 0), 0);
-
-        embed.addFields({
-          name: '📈 Grand Total',
-          value: `Available: **${totalAvailable}** | Used: **${totalUsed}** | Total: **${grandTotal}**`,
-          inline: false
-        });
 
         embed.setFooter({ text: 'SwimHub License System • Use /addlicense to add keys' });
 
