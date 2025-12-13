@@ -937,6 +937,14 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
 
       const client = await pool.connect();
       try {
+        // Debug: Check what's actually in the database
+        const debugStock = await client.query(
+          `SELECT product_type, status, claimed, COUNT(*) as count 
+           FROM license_stock 
+           GROUP BY product_type, status, claimed`
+        );
+        console.log('📊 Current stock status:', JSON.stringify(debugStock.rows, null, 2));
+
         // Check if this checkout was already processed
         const existingPurchase = await client.query(
           'SELECT * FROM polar_purchases WHERE checkout_id = $1',
@@ -955,6 +963,8 @@ app.post('/webhook/polar', webhookLimiter, async (req, res) => {
         // Get an available license key from license_stock table
         // Use row-level locking to prevent race conditions
         // First try to match specific product type, then fall back to universal 'swimhub' keys, then any available key
+        console.log(`🔍 Looking for keys with product_type = '${product_type}' or 'swimhub' or any available...`);
+        
         let keyResult = await client.query(
           `UPDATE license_stock 
            SET status = 'assigned', claimed = TRUE, claimed_at = now(), 
